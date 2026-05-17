@@ -1,0 +1,2950 @@
+openapi: 3.1.0
+info:
+  title: Scrapely API
+  description: |
+    The Scrapely API allows you to automate Twitter DM outreach, manage accounts,
+    scrape leads, and track campaign performance programmatically.
+
+    ## Authentication
+    All API requests require authentication using an API key. Include it in one of these headers:
+    - `X-API-Key: sk_live_your_api_key` (recommended)
+    - `Authorization: Bearer sk_live_your_api_key`
+
+    ## Rate Limits
+    - 60 requests per minute per API key
+    - Rate limit headers included in all responses
+
+    ## Request IDs
+    Every response includes an `X-Request-ID` header for debugging and support.
+  version: 1.0.0
+  contact:
+    name: Scrapely Support
+    url: https://app.scrapely.co
+  license:
+    name: Proprietary
+servers:
+  - url: https://app.scrapely.co/api/v1
+    description: Production server
+
+security:
+  - ApiKeyHeader: []
+  - BearerAuth: []
+
+tags:
+  - name: Accounts
+    description: Manage Twitter accounts
+  - name: Cookie Extraction
+    description: |
+      **DEPRECATED** - Cookie extraction endpoints are temporarily unavailable.
+      These endpoints are deprecated while we work on improvements.
+      Please check back later or contact support for updates.
+  - name: Lead Scraping
+    description: Scrape leads from Twitter
+  - name: Campaigns
+    description: Launch and manage DM campaigns
+  - name: Conversations
+    description: Fetch and manage conversations
+  - name: CRM
+    description: CRM data management
+  - name: Messaging
+    description: Send direct messages
+  - name: Enrichment
+    description: Find social profiles from name and company
+  - name: Scheduled Tweets
+    description: Schedule and manage automated tweets
+
+paths:
+  /accounts:
+    get:
+      tags: [Accounts]
+      summary: List accounts
+      description: List all active Twitter accounts in your workspace
+      operationId: listAccounts
+      responses:
+        '200':
+          description: Successful response
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accounts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Account'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+    post:
+      tags: [Accounts]
+      summary: Add account
+      description: Add a new Twitter account to your workspace
+      operationId: addAccount
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddAccountRequest'
+      responses:
+        '201':
+          description: Account created
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddAccountResponse'
+        '200':
+          description: Account updated (already existed)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddAccountResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    delete:
+      tags: [Accounts]
+      summary: Remove account
+      description: Remove a Twitter account from your workspace
+      operationId: removeAccount
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RemoveAccountRequest'
+      responses:
+        '200':
+          description: Account removed
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RemoveAccountResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /accounts/pause:
+    patch:
+      tags: [Accounts]
+      summary: Toggle pause status
+      description: Pause or unpause DM sending for a specific Twitter account
+      operationId: toggleAccountPause
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TogglePauseRequest'
+      responses:
+        '200':
+          description: Pause status updated
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TogglePauseResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /accounts/pause-followups:
+    patch:
+      tags: [Accounts]
+      summary: Toggle follow-ups pause status
+      description: Pause or unpause follow-up messages for a specific Twitter account
+      operationId: toggleAccountFollowupsPause
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ToggleFollowupsPauseRequest'
+      responses:
+        '200':
+          description: Follow-ups pause status updated
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToggleFollowupsPauseResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /accounts/cookies:
+    put:
+      tags: [Accounts]
+      summary: Update cookies
+      description: Update cookies for an existing account when the session expires
+      operationId: updateAccountCookies
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [account_id, cookies]
+              properties:
+                account_id:
+                  type: string
+                  format: uuid
+                  description: The account UUID
+                cookies:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Cookie'
+                  description: Array of cookie objects
+      responses:
+        '200':
+          description: Cookies updated
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  account:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      handle:
+                        type: string
+                      is_active:
+                        type: boolean
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /accounts/proxy:
+    put:
+      tags: [Accounts]
+      summary: Update proxy
+      description: Update the proxy settings for an existing Twitter account
+      operationId: updateAccountProxy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProxyRequest'
+      responses:
+        '200':
+          description: Proxy updated
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateProxyResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /accounts/tags:
+    get:
+      tags: [Accounts]
+      summary: Get account tags
+      description: Get tags for a specific account or all active accounts in your workspace
+      operationId: getAccountTags
+      parameters:
+        - name: account_id
+          in: query
+          description: Account UUID. Omit to get tags for all accounts.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successful response
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/AccountTagsSingle'
+                  - $ref: '#/components/schemas/AccountTagsList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Accounts]
+      summary: Set account tags
+      description: Replace all tags for an account. Tags are normalized to lowercase alphanumeric with hyphens.
+      operationId: setAccountTags
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetAccountTagsRequest'
+      responses:
+        '200':
+          description: Tags replaced
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountTagsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags: [Accounts]
+      summary: Add or remove tags
+      description: Add and/or remove individual tags without replacing the entire list
+      operationId: updateAccountTags
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAccountTagsRequest'
+      responses:
+        '200':
+          description: Tags updated
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountTagsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /get-cookies:
+    post:
+      tags: [Cookie Extraction]
+      summary: Queue cookie extraction (Deprecated)
+      deprecated: true
+      description: |
+        **DEPRECATED** - This endpoint is temporarily unavailable.
+        Cookie extraction functionality is being redesigned. Please check back later or contact support for updates.
+
+        ~~Queue a cookie extraction job. Submit account credentials and receive the session cookies.~~
+      operationId: queueCookieExtraction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CookieExtractionRequest'
+      responses:
+        '201':
+          description: Job queued successfully
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CookieExtractionJobCreated'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Job already exists for this username
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Job already exists
+                  message:
+                    type: string
+                  job_id:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum: [queued, processing]
+
+  /get-cookies/status:
+    get:
+      tags: [Cookie Extraction]
+      summary: Check extraction status (Deprecated)
+      deprecated: true
+      description: |
+        **DEPRECATED** - This endpoint is temporarily unavailable.
+        Cookie extraction functionality is being redesigned. Please check back later or contact support for updates.
+
+        ~~Check the status of a cookie extraction job and retrieve results when completed.~~
+      operationId: getCookieExtractionStatus
+      parameters:
+        - name: job_id
+          in: query
+          required: true
+          description: The job UUID returned from POST /get-cookies
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Job status retrieved
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CookieExtractionStatus'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /scraping-sources:
+    get:
+      tags: [Lead Scraping]
+      summary: List scraping sources
+      description: List scraping sources or get status of a specific source
+      operationId: listScrapingSources
+      parameters:
+        - name: id
+          in: query
+          description: Get specific source by ID
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          description: Results per page
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: offset
+          in: query
+          description: Pagination offset
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Successful response
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ScrapingSourceDetail'
+                  - $ref: '#/components/schemas/ScrapingSourceList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [Lead Scraping]
+      summary: Create scraping source
+      description: Create a new lead source by scraping Twitter followers/following
+      operationId: createScrapingSource
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateScrapingSourceRequest'
+      responses:
+        '201':
+          description: Scraping source created
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateScrapingSourceResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /campaigns:
+    get:
+      tags: [Campaigns]
+      summary: List campaigns
+      description: List campaigns with basic stats
+      operationId: listCampaigns
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Successful response
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CampaignList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [Campaigns]
+      summary: Launch campaign
+      description: Launch a DM campaign targeting leads from your scraping sources. Maximum 25,000 leads per campaign.
+      operationId: launchCampaign
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LaunchCampaignRequest'
+      responses:
+        '201':
+          description: Campaign launched
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaunchCampaignResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /campaigns/analytics:
+    get:
+      tags: [Campaigns]
+      summary: Get analytics
+      description: |
+        Get detailed campaign analytics including reply rates, sentiment, DM copy
+        (message variants with follow-ups), and engagement action settings per campaign
+      operationId: getCampaignAnalytics
+      parameters:
+        - name: campaign_name
+          in: query
+          description: Filter to specific campaign
+          schema:
+            type: string
+        - name: account_id
+          in: query
+          description: Filter to specific account
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successful response
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CampaignAnalytics'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /conversations:
+    get:
+      tags: [Conversations]
+      summary: Fetch conversations
+      description: |
+        Fetch DM conversations. Pass a `conversation_id` to get a single conversation
+        with all messages and complete lead data.
+
+        **Pagination:** Use cursor-based pagination for reliable results. The `next_cursor`
+        in the response can be passed as the `cursor` parameter for the next page.
+      operationId: getConversations
+      parameters:
+        - name: conversation_id
+          in: query
+          description: Get single conversation with all messages & lead info
+          schema:
+            type: string
+        - name: account_id
+          in: query
+          description: Filter by Twitter account
+          schema:
+            type: string
+            format: uuid
+        - name: handle
+          in: query
+          description: Filter by receiver handle
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Results per page
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+        - name: cursor
+          in: query
+          description: Pagination cursor (recommended)
+          schema:
+            type: string
+        - name: offset
+          in: query
+          deprecated: true
+          description: Pagination offset (deprecated, use cursor instead)
+          schema:
+            type: integer
+        - name: include_messages
+          in: query
+          description: Include full message history
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Successful response
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/SingleConversation'
+                  - $ref: '#/components/schemas/ConversationList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /dm/send:
+    post:
+      tags: [Messaging]
+      summary: Send DM
+      description: Send a direct message to an existing conversation
+      operationId: sendDM
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendDMRequest'
+      responses:
+        '200':
+          description: Message sent
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SendDMResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /enrich/twitter:
+    post:
+      tags: [Enrichment]
+      summary: Find Twitter profile
+      description: |
+        Find a person's Twitter/X profile from their first name, last name, and company name.
+        Uses search + AI matching to identify the best profile match. Results are cached for 24 hours.
+
+        Typical response time is 5-12 seconds for uncached lookups.
+      operationId: enrichTwitter
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrichTwitterRequest'
+      responses:
+        '200':
+          description: Lookup result (match or no match)
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/EnrichTwitterMatch'
+                  - $ref: '#/components/schemas/EnrichTwitterNoMatch'
+              examples:
+                match:
+                  summary: Successful match
+                  value:
+                    matched: true
+                    confidence: 0.92
+                    cached: false
+                    twitter:
+                      handle: johndoe
+                      user_id: "123456789"
+                      name: John Doe
+                      bio: "Founder @ Acme | Building cool stuff"
+                      profile_url: https://x.com/johndoe
+                      profile_image_url: https://pbs.twimg.com/profile_images/example/photo_400x400.jpg
+                      followers_count: 5000
+                      following_count: 800
+                      verified: false
+                      location: "San Francisco, CA"
+                no_match:
+                  summary: No match found
+                  value:
+                    matched: false
+                    confidence: 0.0
+                    cached: false
+                    reason: no_results
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrichTwitterNoMatch'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /enrich/email:
+    post:
+      tags: [Enrichment]
+      summary: Find email from Twitter handle
+      description: |
+        Given a Twitter handle, fetches the profile, extracts the person's real name
+        and company, resolves the company domain, and finds + verifies their email address.
+
+        Each found email consumes 1 enrichment credit. Cache hits are free.
+        Check your balance via `GET /enrichment/credits`.
+
+        Typical response time is 10-30 seconds.
+      operationId: enrichEmail
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrichEmailRequest'
+      responses:
+        '200':
+          description: Email lookup result
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrichEmailResponse'
+              examples:
+                email_found:
+                  summary: Email found and verified
+                  value:
+                    handle: alexhormozi
+                    name: Alex Hormozi
+                    firstName: Alex
+                    lastName: Hormozi
+                    fullName: Alex Hormozi
+                    bio: "Founder @ Acquisition.com | Author of $100M Offers"
+                    website: https://acquisition.com
+                    followers: 500000
+                    domain: acquisition.com
+                    companyHandle: acquisition
+                    companyName: Acquisition.com
+                    email: alex@acquisition.com
+                    emailValidity: valid
+                no_email:
+                  summary: No email found
+                  value:
+                    handle: someuser
+                    name: Some User
+                    firstName: Some
+                    lastName: User
+                    fullName: Some User
+                    bio: Just vibing
+                    website: null
+                    followers: 120
+                    domain: null
+                    companyHandle: null
+                    companyName: null
+                    email: null
+                    emailValidity: null
+        '400':
+          description: Invalid input (missing or empty handle)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: Enrichment failed (profile not found, LLM error, etc.)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  handle:
+                    type: string
+                  name:
+                    type: string
+                    nullable: true
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /enrichment/credits:
+    get:
+      tags: [Enrichment]
+      summary: Get enrichment credits
+      description: |
+        Check your current enrichment credit balance. Each found email costs 1 credit. Cache hits are free.
+      operationId: getEnrichmentCredits
+      responses:
+        '200':
+          description: Enrichment credit balance
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  enrichment_credits:
+                    type: integer
+                    description: Total enrichment credits available
+                    example: 100
+                  enrichment_credits_used:
+                    type: integer
+                    description: Total enrichment credits consumed
+                    example: 50
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /scheduled-tweets:
+    get:
+      tags: [Scheduled Tweets]
+      summary: List scheduled tweets
+      description: List all scheduled tweets for your accounts
+      operationId: listScheduledTweets
+      parameters:
+        - name: account_id
+          in: query
+          description: Filter by specific account UUID
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          description: Filter by status
+          schema:
+            type: string
+            enum: [pending, posted, failed]
+        - name: limit
+          in: query
+          description: Max results (default 50, max 100)
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+        - name: offset
+          in: query
+          description: Pagination offset
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Successful response
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduledTweetsListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [Scheduled Tweets]
+      summary: Schedule a tweet
+      description: Schedule a tweet to be posted at a specific time
+      operationId: scheduleTweet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleTweetRequest'
+      responses:
+        '201':
+          description: Tweet scheduled
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleTweetResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Scheduled Tweets]
+      summary: Cancel scheduled tweet
+      description: Cancel a pending scheduled tweet
+      operationId: cancelScheduledTweet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelScheduledTweetRequest'
+      responses:
+        '200':
+          description: Tweet cancelled
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CancelScheduledTweetResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /crm/conversations:
+    get:
+      tags: [CRM]
+      summary: Get CRM conversations
+      description: Fetch conversations organized by CRM tags
+      operationId: getCRMConversations
+      parameters:
+        - name: tag
+          in: query
+          description: Filter to specific tag
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Conversations per tag
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: include_messages
+          in: query
+          description: Include full message history
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Successful response
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CRMConversations'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /crm/update:
+    patch:
+      tags: [CRM]
+      summary: Update CRM data
+      description: Update notes, deal value, or tags for a conversation
+      operationId: updateCRM
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCRMRequest'
+      responses:
+        '200':
+          description: CRM data updated
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateCRMResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    ApiKeyHeader:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key passed in X-API-Key header
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: API key passed as Bearer token
+
+  headers:
+    X-Request-ID:
+      description: Unique request identifier for debugging
+      schema:
+        type: string
+        example: req_m1abc123def456
+    X-RateLimit-Limit:
+      description: Requests allowed per minute
+      schema:
+        type: integer
+        example: 60
+    X-RateLimit-Remaining:
+      description: Requests remaining in current window
+      schema:
+        type: integer
+        example: 45
+    X-RateLimit-Reset:
+      description: Unix timestamp when the rate limit resets
+      schema:
+        type: integer
+        example: 1709234567
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Unauthorized - invalid API key
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Forbidden - subscription not active
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    RateLimited:
+      description: Too many requests
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: Rate limited
+              message:
+                type: string
+                example: Too many requests. Please try again later.
+              retry_after:
+                type: integer
+                description: Seconds until rate limit resets
+                example: 45
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+
+    Account:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        handle:
+          type: string
+        name:
+          type: string
+        profile_image_url:
+          type: string
+          format: uri
+        is_active:
+          type: boolean
+        is_verified:
+          type: boolean
+          description: Whether the account has Twitter Blue verification
+        dms_sent:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        cookies:
+          type: array
+          description: Array of cookie objects for this account's Twitter session
+          items:
+            $ref: '#/components/schemas/Cookie'
+        proxy:
+          type: string
+          description: Proxy URL (host:port)
+          example: "161.77.187.46:12323"
+        proxy_auth:
+          type: string
+          description: Proxy authentication (username:password)
+          example: "username:password"
+        is_paused:
+          type: boolean
+          description: Whether DM sending is paused for this account
+          default: false
+        followups_paused:
+          type: boolean
+          description: Whether follow-up messages are paused
+          default: false
+        warmup_paused:
+          type: boolean
+          description: Whether account warmup is paused
+          default: false
+        ai_setter_enabled:
+          type: boolean
+          description: Whether AI setter is enabled for this account
+          default: false
+        tags:
+          type: array
+          description: Custom tags assigned to this account
+          items:
+            type: string
+          example: ["lead-gen", "warm-account"]
+
+    AccountTagsSingle:
+      type: object
+      properties:
+        account_id:
+          type: string
+          format: uuid
+        handle:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+          example: ["lead-gen", "warm-account", "high-priority"]
+
+    AccountTagsList:
+      type: object
+      properties:
+        accounts:
+          type: array
+          items:
+            type: object
+            properties:
+              account_id:
+                type: string
+                format: uuid
+              handle:
+                type: string
+              tags:
+                type: array
+                items:
+                  type: string
+
+    SetAccountTagsRequest:
+      type: object
+      required: [account_id, tags]
+      properties:
+        account_id:
+          type: string
+          format: uuid
+          description: The account UUID
+          example: 550e8400-e29b-41d4-a716-446655440000
+        tags:
+          type: array
+          items:
+            type: string
+          description: Array of tag strings (replaces existing tags). Pass [] to clear.
+          example: ["lead-gen", "warm-account", "high-priority"]
+
+    UpdateAccountTagsRequest:
+      type: object
+      required: [account_id]
+      properties:
+        account_id:
+          type: string
+          format: uuid
+          description: The account UUID
+          example: 550e8400-e29b-41d4-a716-446655440000
+        add:
+          type: array
+          items:
+            type: string
+          description: Tags to add (duplicates ignored)
+          example: ["vip", "enterprise"]
+        remove:
+          type: array
+          items:
+            type: string
+          description: Tags to remove
+          example: ["warm-account"]
+
+    AccountTagsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+          example: Tags updated
+        account_id:
+          type: string
+          format: uuid
+        handle:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+          example: ["lead-gen", "high-priority", "vip", "enterprise"]
+
+    Cookie:
+      type: object
+      required: [name, value, domain]
+      properties:
+        name:
+          type: string
+          example: ct0
+        value:
+          type: string
+        domain:
+          type: string
+          example: .twitter.com
+
+    CookieExtractionRequest:
+      type: object
+      required: [username, password, two_fa_key, proxy, proxy_auth, xchat_pin]
+      properties:
+        username:
+          type: string
+          description: Twitter username/handle (with or without @)
+          example: myhandle
+        password:
+          type: string
+          description: Account password
+        two_fa_key:
+          type: string
+          description: TOTP 2FA secret key (16 character alphanumeric)
+          pattern: "^[A-Za-z0-9]{16}$"
+          example: ABCD1234EFGH5678
+        proxy:
+          type: string
+          description: Proxy URL
+          example: http://proxy.example.com:8080
+        proxy_auth:
+          type: string
+          description: Proxy authentication (username:password)
+          example: username:password
+        xchat_pin:
+          type: string
+          description: X chat PIN to set (4-6 digits)
+          pattern: "^[0-9]{4,6}$"
+          example: "1234"
+
+    CookieExtractionJobCreated:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        job_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [queued]
+          example: queued
+        username:
+          type: string
+          example: myhandle
+        created_at:
+          type: string
+          format: date-time
+        message:
+          type: string
+          example: "Cookie extraction job queued. Poll GET /api/v1/get-cookies/status?job_id=xxx to check progress."
+
+    CookieExtractionStatus:
+      type: object
+      properties:
+        job_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [queued, processing, completed, failed]
+        username:
+          type: string
+        message:
+          type: string
+          description: Human-readable status message
+        created_at:
+          type: string
+          format: date-time
+        started_at:
+          type: string
+          format: date-time
+          description: When processing started (only if status is processing, completed, or failed)
+        completed_at:
+          type: string
+          format: date-time
+          description: When job finished (only if status is completed or failed)
+        cookies:
+          type: array
+          description: Extracted cookies (only if status is completed)
+          items:
+            $ref: '#/components/schemas/Cookie'
+        error:
+          type: string
+          description: Error message (only if status is failed)
+
+    AddAccountRequest:
+      type: object
+      required: [handle, cookies, proxy, proxy_auth, xchat_pin]
+      properties:
+        handle:
+          type: string
+          description: Twitter handle (with or without @)
+          example: myhandle
+        cookies:
+          type: array
+          items:
+            $ref: '#/components/schemas/Cookie'
+          description: Array of cookie objects (must include ct0 and auth_token)
+        proxy:
+          type: string
+          description: Proxy URL
+          example: http://proxy.example.com:8080
+        proxy_auth:
+          type: string
+          description: Proxy authentication (username:password)
+          example: username:password
+        xchat_pin:
+          type: string
+          description: X chat PIN code
+          example: "123456"
+
+    AddAccountResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        account:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            handle:
+              type: string
+            is_active:
+              type: boolean
+            created_at:
+              type: string
+              format: date-time
+            is_new:
+              type: boolean
+
+    RemoveAccountRequest:
+      type: object
+      description: Provide either account_id or handle to identify the account to remove
+      properties:
+        account_id:
+          type: string
+          format: uuid
+          description: The account UUID to remove
+          example: 550e8400-e29b-41d4-a716-446655440000
+        handle:
+          type: string
+          description: Twitter handle to remove (with or without @)
+          example: myhandle
+
+    RemoveAccountResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+          example: Account removed successfully
+        account:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            handle:
+              type: string
+
+    TogglePauseRequest:
+      type: object
+      required: [account_id, is_paused]
+      properties:
+        account_id:
+          type: string
+          format: uuid
+          description: The account UUID to update
+          example: 550e8400-e29b-41d4-a716-446655440000
+        is_paused:
+          type: boolean
+          description: Set to true to pause DM sending, false to unpause
+          example: true
+
+    TogglePauseResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+          example: Account paused
+        account:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            handle:
+              type: string
+            is_paused:
+              type: boolean
+
+    ToggleFollowupsPauseRequest:
+      type: object
+      required: [account_id, followups_paused]
+      properties:
+        account_id:
+          type: string
+          format: uuid
+          description: The account UUID to update
+          example: 550e8400-e29b-41d4-a716-446655440000
+        followups_paused:
+          type: boolean
+          description: Set to true to pause follow-up messages, false to unpause
+          example: true
+
+    ToggleFollowupsPauseResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+          example: Follow-ups paused
+        account:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            handle:
+              type: string
+            followups_paused:
+              type: boolean
+
+    UpdateProxyRequest:
+      type: object
+      required: [account_id, proxy, proxy_auth]
+      properties:
+        account_id:
+          type: string
+          format: uuid
+          description: The account UUID to update
+          example: 550e8400-e29b-41d4-a716-446655440000
+        proxy:
+          type: string
+          description: Proxy URL (host:port or full URL)
+          example: "161.77.187.46:12323"
+        proxy_auth:
+          type: string
+          description: Proxy authentication (username:password)
+          example: "username:password"
+
+    UpdateProxyResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+          example: Proxy updated successfully
+        account:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            handle:
+              type: string
+            proxy:
+              type: string
+            proxy_auth:
+              type: string
+
+    ScheduleTweetRequest:
+      type: object
+      required: [account_id, tweet_text, scheduled_at]
+      properties:
+        account_id:
+          type: string
+          format: uuid
+          description: The account UUID to post from
+          example: 550e8400-e29b-41d4-a716-446655440000
+        tweet_text:
+          type: string
+          description: The tweet content (max 280 characters)
+          maxLength: 280
+          example: "Just launched a new feature! Check it out"
+        scheduled_at:
+          type: string
+          format: date-time
+          description: When to post the tweet (ISO 8601 format, must be in the future)
+          example: "2024-03-20T15:00:00Z"
+
+    ScheduleTweetResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+          example: Tweet scheduled successfully
+        scheduled_tweet:
+          $ref: '#/components/schemas/ScheduledTweet'
+
+    ScheduledTweet:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        account_id:
+          type: string
+          format: uuid
+        account_handle:
+          type: string
+        account_name:
+          type: string
+        account_image:
+          type: string
+          format: uri
+        tweet_text:
+          type: string
+        scheduled_at:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [pending, posted, failed]
+        posted_at:
+          type: string
+          format: date-time
+          nullable: true
+        error_message:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    ScheduledTweetsListResponse:
+      type: object
+      properties:
+        scheduled_tweets:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduledTweet'
+        pagination:
+          type: object
+          properties:
+            limit:
+              type: integer
+            offset:
+              type: integer
+            count:
+              type: integer
+            total:
+              type: integer
+
+    CancelScheduledTweetRequest:
+      type: object
+      required: [tweet_id]
+      properties:
+        tweet_id:
+          type: string
+          format: uuid
+          description: The scheduled tweet UUID to cancel
+          example: 550e8400-e29b-41d4-a716-446655440000
+
+    CancelScheduledTweetResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+          example: Scheduled tweet cancelled
+        tweet_id:
+          type: string
+          format: uuid
+
+    CreateScrapingSourceRequest:
+      type: object
+      required: [name, sources]
+      properties:
+        name:
+          type: string
+          description: Name for the lead source
+          example: Tech Founders Q1
+        sources:
+          type: array
+          items:
+            type: object
+            required: [handle]
+            properties:
+              handle:
+                type: string
+                description: Twitter handle to scrape
+              followers:
+                type: boolean
+                description: Scrape all followers from this handle
+              following:
+                type: boolean
+                description: Scrape all following from this handle
+        filters:
+          $ref: '#/components/schemas/ScrapingFilters'
+
+    CreateScrapingSourceResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        lead_source_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        jobs_created:
+          type: integer
+        message:
+          type: string
+          description: Status message about the scraping job
+        jobs:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              type:
+                type: string
+                enum: [followers, following]
+              handle:
+                type: string
+              status:
+                type: string
+                enum: [pending, processing, completed, failed]
+
+    ScrapingFilters:
+      type: object
+      description: Filter configuration to apply during scraping. Only leads matching filters will be saved.
+      properties:
+        includeKeywords:
+          type: array
+          description: Array of keyword groups for include matching. Each group is an array of keywords.
+          items:
+            type: array
+            items:
+              type: string
+          example: [["founder", "ceo"], ["startup"]]
+        excludeKeywords:
+          type: array
+          description: Array of keyword groups to exclude. Leads matching these will be filtered out.
+          items:
+            type: array
+            items:
+              type: string
+          example: [["hiring", "recruiter"]]
+        includeWithinLogic:
+          type: string
+          enum: [AND, OR]
+          default: AND
+          description: Logic within each include keyword group
+        includeBetweenLogic:
+          type: string
+          enum: [AND, OR]
+          default: OR
+          description: Logic between include keyword groups
+        excludeWithinLogic:
+          type: string
+          enum: [AND, OR]
+          default: AND
+          description: Logic within each exclude keyword group
+        excludeBetweenLogic:
+          type: string
+          enum: [AND, OR]
+          default: OR
+          description: Logic between exclude keyword groups
+        locationExcludeKeywords:
+          type: array
+          description: Array of location keywords to exclude (e.g., country names)
+          items:
+            type: string
+          example: ["nigeria", "pakistan"]
+        followers:
+          type: object
+          description: Only keep leads who have this many followers themselves
+          properties:
+            min:
+              type: integer
+              description: Minimum follower count the lead must have
+            max:
+              type: integer
+              description: Maximum follower count the lead must have
+        following:
+          type: object
+          description: Only keep leads who are following this many accounts
+          properties:
+            min:
+              type: integer
+              description: Minimum following count the lead must have
+            max:
+              type: integer
+              description: Maximum following count the lead must have
+        hasWebsite:
+          type: boolean
+          nullable: true
+          description: true = only leads with website, false = only leads without, null = no filter
+
+    ScrapingSourceDetail:
+      type: object
+      properties:
+        scraping_source:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+            status:
+              type: string
+              enum: [pending, processing, completed, failed]
+            leads_imported:
+              type: integer
+            total_leads:
+              type: integer
+            progress:
+              type: integer
+              minimum: 0
+              maximum: 100
+            handles:
+              type: array
+              items:
+                type: object
+            created_at:
+              type: string
+              format: date-time
+
+    ScrapingSourceList:
+      type: object
+      properties:
+        scraping_sources:
+          type: array
+          items:
+            type: object
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    LaunchCampaignRequest:
+      type: object
+      required: [name, lead_source_ids]
+      properties:
+        name:
+          type: string
+          description: Campaign name
+        message:
+          type: string
+          description: Message text (supports {{firstName}})
+        message_variants:
+          type: array
+          description: Message variants for A/B testing (max 5)
+          maxItems: 5
+          items:
+            type: object
+            properties:
+              message:
+                type: string
+              followups:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    wait_time:
+                      type: integer
+                    wait_unit:
+                      type: string
+                      enum: [hours, days]
+                    message:
+                      type: string
+        lead_source_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        account_ids:
+          type: array
+          description: Account IDs to send from (defaults to all)
+          items:
+            type: string
+            format: uuid
+        max_leads:
+          type: integer
+          description: Maximum number of leads to target (max 25,000 per campaign)
+          maximum: 25000
+        enable_follow:
+          type: boolean
+          description: Follow the lead's profile before sending DM
+          default: false
+        enable_like:
+          type: boolean
+          description: Like the lead's recent post before sending DM
+          default: false
+        enable_comment:
+          type: boolean
+          description: Comment on the lead's post before sending DM
+          default: false
+        comment_template:
+          type: string
+          description: AI personalization template for auto-generated comments
+
+    LaunchCampaignResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        campaign_name:
+          type: string
+        jobs_created:
+          type: integer
+        leads_targeted:
+          type: integer
+        message_variants:
+          type: integer
+        accounts_used:
+          type: integer
+        distribution:
+          type: array
+          items:
+            type: object
+            properties:
+              account_id:
+                type: string
+              handle:
+                type: string
+              jobs:
+                type: integer
+
+    CampaignList:
+      type: object
+      properties:
+        campaigns:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              total:
+                type: integer
+              completed:
+                type: integer
+              pending:
+                type: integer
+              failed:
+                type: integer
+              progress:
+                type: integer
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    CampaignAnalytics:
+      type: object
+      properties:
+        accounts:
+          type: array
+          description: Account-level statistics
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              handle:
+                type: string
+              name:
+                type: string
+                description: Profile display name
+              profile_image_url:
+                type: string
+                format: uri
+              is_paused:
+                type: boolean
+              dms_sent:
+                type: integer
+                description: Total DMs sent from this account
+              dms_sent_24hrs:
+                type: integer
+                description: DMs sent in last 24 hours
+              replies_24hrs:
+                type: integer
+                description: Replies received in last 24 hours
+              positive_replies_24hrs:
+                type: integer
+                description: Positive replies received in last 24 hours
+              responses:
+                type: integer
+                description: Total replies received
+              response_rate:
+                type: number
+                description: Response rate percentage (0-100)
+              pending_count:
+                type: integer
+                description: Number of pending DM jobs
+              sentiment:
+                $ref: '#/components/schemas/Sentiment'
+        campaigns:
+          type: array
+          description: Campaign statistics per account
+          items:
+            type: object
+            properties:
+              account_id:
+                type: string
+                format: uuid
+              account_handle:
+                type: string
+              campaign_name:
+                type: string
+              total:
+                type: integer
+                description: Total DM jobs in campaign
+              completed:
+                type: integer
+                description: Completed DM jobs
+              pending:
+                type: integer
+                description: Pending DM jobs
+              failed:
+                type: integer
+                description: Failed DM jobs
+              remaining:
+                type: integer
+                description: Remaining DM jobs (same as pending)
+              progress:
+                type: integer
+                description: Completion percentage (0-100)
+              reply_count:
+                type: integer
+                description: Number of replies received for this campaign
+              response_rate:
+                type: number
+                description: Response rate percentage (replies / completed * 100)
+        campaignSentimentStats:
+          type: array
+          description: Per-campaign sentiment breakdown
+          items:
+            type: object
+            properties:
+              campaign_name:
+                type: string
+              account_id:
+                type: string
+                format: uuid
+              sentiment:
+                type: object
+                properties:
+                  positive:
+                    type: integer
+                  negative:
+                    type: integer
+                  neutral:
+                    type: integer
+                  total:
+                    type: integer
+              reply_count:
+                type: integer
+        campaignVariantStats:
+          type: array
+          description: Per-variant (A/B test) reply statistics
+          items:
+            type: object
+            properties:
+              campaign_name:
+                type: string
+              account_id:
+                type: string
+                format: uuid
+              variants:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    message:
+                      type: string
+                      description: The message variant text
+                    sent:
+                      type: integer
+                      description: Number of DMs sent with this variant
+                    replied:
+                      type: integer
+                      description: Number of replies received for this variant
+                    reply_rate:
+                      type: number
+                      description: Reply rate percentage for this variant
+        campaignReplies:
+          type: array
+          description: Per-campaign individual reply records for linking to conversations/CRM
+          items:
+            type: object
+            properties:
+              campaign_name:
+                type: string
+              account_id:
+                type: string
+                format: uuid
+              replies:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    conversation_id:
+                      type: string
+                      description: Conversation ID — use with /conversations or /crm endpoints to get full details
+                    replier_handle:
+                      type: string
+                      description: Twitter handle of the person who replied
+                    sentiment:
+                      type: string
+                      enum: [positive, negative, neutral]
+                      description: Sentiment classification of the reply
+                    dm_job_id:
+                      type: string
+                      format: uuid
+                      description: The DM job that triggered this reply
+        campaignSettings:
+          type: array
+          description: Per-campaign DM copy, message variants with follow-ups, and engagement actions
+          items:
+            type: object
+            properties:
+              campaign_name:
+                type: string
+              message_variants:
+                type: array
+                description: A/B test variants with their follow-up sequences
+                items:
+                  type: object
+                  properties:
+                    message:
+                      type: string
+                      description: The DM message text for this variant
+                    followups:
+                      type: array
+                      description: Follow-up messages for this variant
+                      items:
+                        type: object
+                        properties:
+                          wait_time:
+                            type: number
+                            description: Time to wait before sending this follow-up
+                          wait_unit:
+                            type: string
+                            enum: [hours, days, weeks]
+                            description: Unit for wait_time
+                          message:
+                            type: string
+                            description: Follow-up message text
+              followups:
+                type: array
+                description: Global follow-up messages (when not using per-variant followups)
+                items:
+                  type: object
+                  properties:
+                    wait_time:
+                      type: number
+                    wait_unit:
+                      type: string
+                      enum: [hours, days, weeks]
+                    message:
+                      type: string
+              engagement_actions:
+                type: object
+                description: Pre-DM engagement action settings
+                properties:
+                  enable_follow:
+                    type: boolean
+                    description: Whether to follow the lead before DMing
+                  enable_like:
+                    type: boolean
+                    description: Whether to like a recent tweet before DMing
+                  enable_comment:
+                    type: boolean
+                    description: Whether to comment on a recent tweet before DMing
+                  comment_template:
+                    type: string
+                    description: AI personalization template for auto-comments
+        totals:
+          type: object
+          description: Overall totals across all accounts and campaigns
+          properties:
+            dms_sent:
+              type: integer
+            dms_sent_24hrs:
+              type: integer
+              description: Total DMs sent in last 24 hours across all accounts
+            replies_24hrs:
+              type: integer
+              description: Total replies received in last 24 hours across all accounts
+            positive_replies_24hrs:
+              type: integer
+              description: Total positive replies received in last 24 hours across all accounts
+            responses:
+              type: integer
+            response_rate:
+              type: number
+            positive:
+              type: integer
+            negative:
+              type: integer
+            neutral:
+              type: integer
+
+    Sentiment:
+      type: object
+      properties:
+        positive:
+          type: integer
+        negative:
+          type: integer
+        neutral:
+          type: integer
+
+    ConversationList:
+      type: object
+      properties:
+        conversations:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConversationSummary'
+        pagination:
+          type: object
+          properties:
+            limit:
+              type: integer
+            count:
+              type: integer
+            has_more:
+              type: boolean
+        next_cursor:
+          type: string
+          description: Cursor for next page (only present if has_more is true)
+
+    ConversationSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        conversation_id:
+          type: string
+        account_handle:
+          type: string
+        receiver:
+          $ref: '#/components/schemas/Receiver'
+        last_message:
+          type: object
+          properties:
+            text:
+              type: string
+            time:
+              type: integer
+            is_sent:
+              type: boolean
+        message_count:
+          type: integer
+        is_unread:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    SingleConversation:
+      type: object
+      properties:
+        conversation:
+          type: object
+          properties:
+            id:
+              type: string
+            conversation_id:
+              type: string
+            account_handle:
+              type: string
+            lead:
+              $ref: '#/components/schemas/Lead'
+            crm:
+              $ref: '#/components/schemas/CRMData'
+            stats:
+              type: object
+              properties:
+                message_count:
+                  type: integer
+                is_unread:
+                  type: boolean
+                last_message_time:
+                  type: integer
+                last_message_text:
+                  type: string
+                last_message_is_sent:
+                  type: boolean
+            messages:
+              type: array
+              items:
+                $ref: '#/components/schemas/Message'
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+
+    Receiver:
+      type: object
+      properties:
+        user_id:
+          type: string
+        screen_name:
+          type: string
+        name:
+          type: string
+        profile_image_url:
+          type: string
+          format: uri
+        bio:
+          type: string
+        location:
+          type: string
+        website:
+          type: string
+        followers_count:
+          type: integer
+        following_count:
+          type: integer
+        is_blue_verified:
+          type: boolean
+          description: Whether the lead has a blue verification checkmark on X/Twitter
+
+    Lead:
+      type: object
+      properties:
+        user_id:
+          type: string
+        screen_name:
+          type: string
+        name:
+          type: string
+        profile_image_url:
+          type: string
+          format: uri
+        profile_banner_url:
+          type: string
+          format: uri
+        bio:
+          type: string
+        location:
+          type: string
+        website:
+          type: string
+        followers_count:
+          type: integer
+        following_count:
+          type: integer
+        verified:
+          type: boolean
+
+    CRMData:
+      type: object
+      properties:
+        notes:
+          type: string
+        deal_value:
+          type: number
+        deal_currency:
+          type: string
+          default: USD
+
+    Message:
+      type: object
+      properties:
+        text:
+          type: string
+        time:
+          type: integer
+        sender:
+          type: string
+        isSent:
+          type: boolean
+
+    SendDMRequest:
+      type: object
+      required: [conversation_id, message, account_id]
+      properties:
+        conversation_id:
+          type: string
+          description: The conversation ID
+        message:
+          type: string
+          description: Message text (max 10,000 chars)
+          maxLength: 10000
+        account_id:
+          type: string
+          format: uuid
+          description: Twitter account ID to send from
+
+    SendDMResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message_id:
+          type: string
+        conversation_id:
+          type: string
+        account_handle:
+          type: string
+          description: Twitter handle of the sending account
+
+    CRMConversations:
+      type: object
+      properties:
+        columns:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              conversations:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    conversation_id:
+                      type: string
+                    account_handle:
+                      type: string
+                    tag:
+                      type: string
+                    is_blue_verified:
+                      type: boolean
+                      description: Whether the lead has a blue verification checkmark on X/Twitter
+                    receiver:
+                      $ref: '#/components/schemas/Receiver'
+                    crm:
+                      $ref: '#/components/schemas/CRMData'
+                    last_message:
+                      type: object
+                      properties:
+                        text:
+                          type: string
+                        time:
+                          type: string
+                        is_sent:
+                          type: boolean
+                    message_count:
+                      type: integer
+                    is_unread:
+                      type: boolean
+              count:
+                type: integer
+        custom_tags:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              color:
+                type: string
+              key:
+                type: string
+        base_tags:
+          type: array
+          items:
+            type: string
+
+    UpdateCRMRequest:
+      type: object
+      required: [conversation_id, account_handle]
+      properties:
+        conversation_id:
+          type: string
+          description: The conversation ID
+        account_handle:
+          type: string
+          description: The account handle
+        notes:
+          type: string
+          description: Notes for the conversation
+        deal_value:
+          type: number
+          description: Deal value
+        deal_currency:
+          type: string
+          description: Currency code
+          default: USD
+        tag:
+          type: string
+          description: Tag to set (null to remove)
+          nullable: true
+
+    UpdateCRMResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        updated:
+          type: object
+          properties:
+            conversation_id:
+              type: string
+            account_handle:
+              type: string
+            notes:
+              type: string
+            deal_value:
+              type: number
+            deal_currency:
+              type: string
+            tag:
+              type: string
+
+    EnrichTwitterRequest:
+      type: object
+      required: [firstName, lastName, companyName]
+      properties:
+        firstName:
+          type: string
+          description: Person's first name
+          example: John
+        lastName:
+          type: string
+          description: Person's last name
+          example: Doe
+        companyName:
+          type: string
+          description: Person's company name
+          example: Acme Corp
+
+    EnrichTwitterMatch:
+      type: object
+      properties:
+        matched:
+          type: boolean
+          const: true
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: AI confidence score (0.0 to 1.0)
+          example: 0.92
+        cached:
+          type: boolean
+          description: Whether the result was served from cache
+        twitter:
+          type: object
+          properties:
+            handle:
+              type: string
+              example: johndoe
+            user_id:
+              type: string
+              example: "123456789"
+            name:
+              type: string
+              example: John Doe
+            bio:
+              type: string
+              example: "Founder @ Acme | Building cool stuff"
+            profile_url:
+              type: string
+              format: uri
+              example: https://x.com/johndoe
+            profile_image_url:
+              type: string
+              format: uri
+            followers_count:
+              type: integer
+              example: 5000
+            following_count:
+              type: integer
+              example: 800
+            verified:
+              type: boolean
+            location:
+              type: string
+              example: "San Francisco, CA"
+
+    EnrichTwitterNoMatch:
+      type: object
+      properties:
+        matched:
+          type: boolean
+          const: false
+        confidence:
+          type: number
+          example: 0.0
+        cached:
+          type: boolean
+        reason:
+          type: string
+          enum: [no_results, low_confidence, invalid_input]
+          description: Why no match was returned
+
+    EnrichEmailRequest:
+      type: object
+      required: [handle]
+      properties:
+        handle:
+          type: string
+          description: "Twitter/X handle (e.g. 'elonmusk' or '@elonmusk')"
+          example: alexhormozi
+
+    EnrichEmailResponse:
+      type: object
+      properties:
+        handle:
+          type: string
+          example: alexhormozi
+        name:
+          type: string
+          example: Alex Hormozi
+        firstName:
+          type: string
+          nullable: true
+          example: Alex
+        lastName:
+          type: string
+          nullable: true
+          example: Hormozi
+        fullName:
+          type: string
+          nullable: true
+          example: Alex Hormozi
+        bio:
+          type: string
+          example: "Founder @ Acquisition.com | Author of $100M Offers"
+        website:
+          type: string
+          nullable: true
+          format: uri
+          example: https://acquisition.com
+        followers:
+          type: integer
+          example: 500000
+        domain:
+          type: string
+          nullable: true
+          example: acquisition.com
+        companyHandle:
+          type: string
+          nullable: true
+          example: acquisition
+        companyName:
+          type: string
+          nullable: true
+          example: Acquisition.com
+        email:
+          type: string
+          nullable: true
+          format: email
+          example: alex@acquisition.com
+        emailValidity:
+          type: string
+          nullable: true
+          enum: [valid, valid-risky, invalid, unknown]
+          description: Email verification result
+
+    Pagination:
+      type: object
+      properties:
+        limit:
+          type: integer
+        offset:
+          type: integer
+        count:
+          type: integer
+        total:
+          type: integer
+
+webhooks:
+  new_reply:
+    post:
+      summary: New reply received
+      description: Sent when a prospect replies to your DM for the first time
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookNewReply'
+      responses:
+        '200':
+          description: Webhook received
+
+  reply_back_and_forth:
+    post:
+      summary: Back-and-forth reply
+      description: Sent when a prospect sends a follow-up reply in an existing conversation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookReplyBackAndForth'
+      responses:
+        '200':
+          description: Webhook received
+
+  account_paused:
+    post:
+      summary: Account paused
+      description: Sent when a Twitter account is disconnected or paused
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookAccountPaused'
+      responses:
+        '200':
+          description: Webhook received
+
+  leads_exhausted:
+    post:
+      summary: Leads exhausted (Deprecated)
+      x-deprecated: true
+      description: |
+        **DEPRECATED** - This webhook is temporarily unavailable.
+        The leads_exhausted webhook is being redesigned. Please check back later or contact support for updates.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookLeadsExhausted'
+      responses:
+        '200':
+          description: Webhook received
+
+# Webhook schemas (defined separately for clarity)
+# Note: Webhook payloads use a flat structure (no nested "data" object)
+x-webhook-schemas:
+  WebhookReplyFields:
+    description: Shared fields for new_reply and reply_back_and_forth events
+    type: object
+    properties:
+      event:
+        type: string
+        enum: [new_reply, reply_back_and_forth]
+      timestamp:
+        type: string
+        format: date-time
+      is_back_and_forth:
+        type: boolean
+        description: "false for new_reply, true for reply_back_and_forth"
+      conversation_id:
+        type: string
+        nullable: true
+      unibox_url:
+        type: string
+        nullable: true
+        description: Direct link to the conversation in the Scrapely Unibox
+      account_twitter_handle:
+        type: string
+        description: Your account handle that received the reply
+      account_id:
+        type: string
+      sender_id:
+        type: string
+        nullable: true
+      sender_screen_name:
+        type: string
+        description: The prospect's Twitter handle
+      message_text:
+        type: string
+      message_time:
+        type: string
+        format: date-time
+      profile_url:
+        type: string
+        nullable: true
+        description: "Link to the sender's Twitter profile (https://x.com/{handle})"
+      sentiment:
+        type: string
+        nullable: true
+        description: "AI-detected sentiment of the reply (positive, negative, neutral). Only present for new_reply events."
+      response_count:
+        type: integer
+        nullable: true
+        description: "Number of responses in the conversation. Only present for new_reply events."
+      lead_id:
+        type: string
+        nullable: true
+      lead_lead_id:
+        type: string
+        nullable: true
+      lead_twitter_handle:
+        type: string
+        description: "The lead's Twitter handle (falls back to sender_screen_name)"
+      lead_name:
+        type: string
+        nullable: true
+      lead_description:
+        type: string
+        nullable: true
+        description: "The lead's Twitter bio"
+      lead_follower_count:
+        type: integer
+        nullable: true
+      lead_following_count:
+        type: integer
+        nullable: true
+      lead_location:
+        type: string
+        nullable: true
+      lead_website:
+        type: string
+        description: "Extracted website from the lead's profile or bio. Returns \"no website\" if none found."
+      lead_replied:
+        type: boolean
+        nullable: true
+      lead_replied_at:
+        type: string
+        format: date-time
+        nullable: true
+      lead_reply_message:
+        type: string
+        nullable: true
+        description: "The lead's reply message text"
+      lead_reply_sentiment:
+        type: string
+        nullable: true
+        description: "AI-detected sentiment of the lead's reply (positive, negative, neutral)"
+      lead_created_at:
+        type: string
+        format: date-time
+        nullable: true
+      lead_dm_status:
+        type: string
+        nullable: true
+
+  WebhookNewReply:
+    allOf:
+      - $ref: '#/components/schemas/WebhookReplyFields'
+      - type: object
+        properties:
+          event:
+            const: new_reply
+          is_back_and_forth:
+            const: false
+
+  WebhookReplyBackAndForth:
+    allOf:
+      - $ref: '#/components/schemas/WebhookReplyFields'
+      - type: object
+        properties:
+          event:
+            const: reply_back_and_forth
+          is_back_and_forth:
+            const: true
+
+  WebhookAccountPaused:
+    type: object
+    properties:
+      event:
+        type: string
+        const: account_paused
+      timestamp:
+        type: string
+        format: date-time
+      data:
+        type: object
+        properties:
+          account_id:
+            type: string
+          account_handle:
+            type: string
+          reason:
+            type: string
+
+  WebhookLeadsExhausted:
+    type: object
+    properties:
+      event:
+        type: string
+        const: leads_exhausted
+      timestamp:
+        type: string
+        format: date-time
+      data:
+        type: object
+        properties:
+          campaign_id:
+            type: string
+          campaign_name:
+            type: string
+          account_handle:
+            type: string
+          total_sent:
+            type: integer

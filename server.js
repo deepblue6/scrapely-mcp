@@ -689,6 +689,18 @@ server.tool(
   }
 );
 
+server.tool(
+  "get_enrichment_credits",
+  "Check your enrichment credit balance. Each found email via enrich_email costs 1 credit. Cache hits are free.",
+  {},
+  async () => {
+    const data = await apiCall("GET", "/enrichment/credits");
+    return {
+      content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+    };
+  }
+);
+
 // ─── SCHEDULED TWEETS ────────────────────────────────────────────────────────
 
 server.tool(
