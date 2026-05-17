@@ -541,19 +541,21 @@ server.tool(
 
 server.tool(
   "get_crm_data",
-  "Get conversations organized by CRM tags (interested, negative, booked, etc.). Returns columns with conversations sorted by tag.",
+  "Get conversations organized by CRM tags (interested, negative, booked, etc.). Returns columns with conversations sorted by tag. Supports pagination.",
   {
     tag: z.string().optional().describe("Filter to a specific tag"),
-    limit: z.number().optional().describe("Results per page"),
+    limit: z.number().optional().describe("Results per page (max 500, default 20)"),
+    page: z.number().optional().describe("Page number for pagination (default 1)"),
     include_messages: z
       .boolean()
       .optional()
       .describe("Include full message history"),
   },
-  async ({ tag, limit, include_messages }) => {
+  async ({ tag, limit, page, include_messages }) => {
     const data = await apiCall("GET", "/crm/conversations", null, {
       tag,
       limit,
+      page,
       include_messages,
     });
     return {
