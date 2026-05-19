@@ -2,6 +2,8 @@
 
 An MCP (Model Context Protocol) server that wraps the [Scrapely](https://scrapely.co) API, letting AI assistants like Claude directly manage your Twitter/X DM outreach — campaigns, lead scraping, conversations, CRM, and scheduled tweets — all through natural language.
 
+**GitHub:** [github.com/deepblue6/scrapely-mcp](https://github.com/deepblue6/scrapely-mcp)
+
 ## Install
 
 ```bash
@@ -64,7 +66,7 @@ Any MCP-compatible client works. Just run `npx scrapely-mcp` with `SCRAPELY_API_
 | `check_scraping_status` | Check progress of scraping jobs |
 | `launch_campaign` | Launch a DM campaign with A/B testing, auto-follow/like/comment |
 | `list_campaigns` | List campaigns with stats |
-| `get_campaign_analytics` | Detailed analytics: reply rates, sentiment, variant stats |
+| `get_campaign_analytics` | Detailed analytics: reply rates, sentiment, variant stats. Supports date range filtering. |
 | `fetch_conversations` | Fetch conversations with optional message history |
 | `send_dm` | Send a DM to an existing conversation |
 | `get_crm_data` | Get conversations organized by CRM tags |
@@ -84,6 +86,7 @@ Once connected to Claude, you can say things like:
 - "Scrape followers of @naval and @paulg, filter for founders with 1k+ followers"
 - "Launch a campaign called Q1 Outreach targeting my Tech Founders source"
 - "What are my campaign analytics? Which variant is performing best?"
+- "Show me campaign stats from January 1st to January 31st"
 - "Show me all interested replies in the CRM"
 - "Send a followup to conversation 123456-789012"
 - "Schedule a tweet from my main account for tomorrow at 9am"

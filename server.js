@@ -453,7 +453,7 @@ server.tool(
 
 server.tool(
   "get_campaign_analytics",
-  "Get detailed campaign analytics including reply rates, sentiment analysis (positive/negative/neutral), 24-hour reply and positive reply counts, per-variant A/B testing stats, full DM copy (message variants with follow-up sequences), engagement action settings (auto-follow, auto-like, auto-comment), and individual reply records per campaign (conversation_id, replier_handle, sentiment, dm_job_id) for linking to conversations/CRM",
+  "Get detailed campaign analytics including reply rates, sentiment analysis (positive/negative/neutral), 24-hour reply and positive reply counts, per-variant A/B testing stats, full DM copy (message variants with follow-up sequences), engagement action settings (auto-follow, auto-like, auto-comment), and individual reply records per campaign (conversation_id, replier_handle, sentiment, dm_job_id) for linking to conversations/CRM. Supports optional date range filtering to scope all stats (DMs sent, replies, sentiment) to a specific time period.",
   {
     campaign_name: z
       .string()
@@ -463,11 +463,21 @@ server.tool(
       .string()
       .optional()
       .describe("Filter to a specific account"),
+    start_date: z
+      .string()
+      .optional()
+      .describe("ISO 8601 date — only include data on or after this date (e.g. 2026-01-15 or 2026-01-15T00:00:00Z)"),
+    end_date: z
+      .string()
+      .optional()
+      .describe("ISO 8601 date — only include data on or before this date (e.g. 2026-02-15 or 2026-02-15T23:59:59Z)"),
   },
-  async ({ campaign_name, account_id }) => {
+  async ({ campaign_name, account_id, start_date, end_date }) => {
     const data = await apiCall("GET", "/campaigns/analytics", null, {
       campaign_name,
       account_id,
+      start_date,
+      end_date,
     });
     return {
       content: [{ type: "text", text: JSON.stringify(data, null, 2) }],

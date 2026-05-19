@@ -611,6 +611,24 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: start_date
+          in: query
+          description: |
+            ISO 8601 date — only include data on or after this date.
+            Filters DM job counts, replies, and sentiment to the specified window.
+            Examples: `2026-01-15`, `2026-01-15T00:00:00Z`
+          schema:
+            type: string
+            format: date-time
+        - name: end_date
+          in: query
+          description: |
+            ISO 8601 date — only include data on or before this date.
+            When a date without time is provided (e.g. `2026-02-15`), it is
+            treated as end-of-day (`2026-02-15T23:59:59.999Z`).
+          schema:
+            type: string
+            format: date-time
       responses:
         '200':
           description: Successful response
@@ -621,6 +639,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CampaignAnalytics'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
 
@@ -2010,6 +2030,23 @@ components:
     CampaignAnalytics:
       type: object
       properties:
+        date_range:
+          type: object
+          nullable: true
+          description: |
+            Present only when start_date and/or end_date query parameters are provided.
+            Shows the effective date bounds used to filter the results.
+          properties:
+            start_date:
+              type: string
+              format: date-time
+              nullable: true
+              description: Effective start bound (ISO 8601), or null if not provided
+            end_date:
+              type: string
+              format: date-time
+              nullable: true
+              description: Effective end bound (ISO 8601), or null if not provided
         accounts:
           type: array
           description: Account-level statistics
