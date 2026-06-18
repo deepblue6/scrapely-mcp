@@ -363,6 +363,68 @@ server.tool(
   }
 );
 
+server.tool(
+  "get_scraping_source_leads",
+  "Fetch leads from a specific scraping source. Returns lead profiles with twitter handle, name, bio, follower/following counts, location, and website. Supports cursor-based pagination (up to 1000 per page) and server-side filtering by followers, website, and bio keywords.",
+  {
+    lead_source_id: z.string().describe("UUID of the scraping source"),
+    limit: z
+      .number()
+      .optional()
+      .describe("Results per page (default 100, max 1000)"),
+    cursor: z
+      .string()
+      .optional()
+      .describe("Pagination cursor from previous response"),
+    min_followers: z
+      .number()
+      .optional()
+      .describe("Only return leads with at least this many followers"),
+    has_website: z
+      .boolean()
+      .optional()
+      .describe("Set to true to only return leads that have a website"),
+    exclude_keywords: z
+      .string()
+      .optional()
+      .describe(
+        "Comma-separated keywords — exclude leads whose bio contains ANY of them (e.g. 'crypto,web3,nft')"
+      ),
+    bio_contains: z
+      .string()
+      .optional()
+      .describe(
+        "Comma-separated keywords — only include leads whose bio contains at least ONE of them (e.g. 'founder,agency,saas')"
+      ),
+  },
+  async ({
+    lead_source_id,
+    limit,
+    cursor,
+    min_followers,
+    has_website,
+    exclude_keywords,
+    bio_contains,
+  }) => {
+    const data = await apiCall(
+      "GET",
+      `/scraping-sources/${lead_source_id}/leads`,
+      null,
+      {
+        limit,
+        cursor,
+        min_followers,
+        has_website: has_website ? "true" : undefined,
+        exclude_keywords,
+        bio_contains,
+      }
+    );
+    return {
+      content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+    };
+  }
+);
+
 // ─── CAMPAIGNS ───────────────────────────────────────────────────────────────
 
 server.tool(
@@ -689,7 +751,7 @@ server.tool(
 
 server.tool(
   "enrich_email",
-  "Find a person's email address from their Twitter/X handle. Fetches the profile, extracts name and company, resolves the company domain, and finds + verifies the email. Typical response time is 10-30 seconds.",
+  "Find a person's email address from their Twitter/X handle. Fetches the profile, extracts name and company, resolves the company domain, and finds + verifies the email.",
   {
     handle: z.string().describe("Twitter/X handle (e.g. 'elonmusk' or '@elonmusk')"),
   },

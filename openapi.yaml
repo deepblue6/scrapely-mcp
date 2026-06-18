@@ -534,6 +534,57 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /scraping-sources/{lead_source_id}/leads:
+    get:
+      tags: [Lead Scraping]
+      summary: Get leads from a scraping source
+      description: |
+        Retrieve leads scraped from a specific source. Supports cursor-based pagination
+        for efficiently iterating through large lead lists (up to 1000 per page).
+      operationId: getScrapingSourceLeads
+      parameters:
+        - name: lead_source_id
+          in: path
+          required: true
+          description: UUID of the scraping source
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          description: Results per page (default 100, max 1000)
+          schema:
+            type: integer
+            default: 100
+            maximum: 1000
+        - name: cursor
+          in: query
+          description: Pagination cursor from previous response
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScrapingSourceLeads'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /campaigns:
     get:
       tags: [Campaigns]
@@ -825,7 +876,7 @@ paths:
         Each found email consumes 1 enrichment credit. Cache hits are free.
         Check your balance via `GET /enrichment/credits`.
 
-        Typical response time is 10-30 seconds.
+
       operationId: enrichEmail
       requestBody:
         required: true
@@ -864,7 +915,7 @@ paths:
                     domain: acquisition.com
                     companyHandle: acquisition
                     companyName: Acquisition.com
-                    email: alex@acquisition.com
+                    email: alex.hormozi@acquisition.com
                     emailValidity: valid
                 no_email:
                   summary: No email found
@@ -1915,6 +1966,56 @@ components:
         pagination:
           $ref: '#/components/schemas/Pagination'
 
+    ScrapingSourceLeads:
+      type: object
+      properties:
+        leads:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScrapingSourceLead'
+        pagination:
+          type: object
+          properties:
+            next_cursor:
+              type: string
+              nullable: true
+              description: Cursor for next page (null if no more results)
+            has_more:
+              type: boolean
+            count:
+              type: integer
+
+    ScrapingSourceLead:
+      type: object
+      properties:
+        twitter_handle:
+          type: string
+          example: johndoe
+        lead_source_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: John Doe
+        bio:
+          type: string
+          example: "Founder @ Acme"
+        followers_count:
+          type: integer
+          example: 4500
+        following_count:
+          type: integer
+          example: 320
+        location:
+          type: string
+          example: SF
+        website:
+          type: string
+          example: "https://acme.com"
+        is_blue_verified:
+          type: boolean
+          description: Whether the lead has a blue verification checkmark on X/Twitter
+
     LaunchCampaignRequest:
       type: object
       required: [name, lead_source_ids]
@@ -2749,11 +2850,11 @@ components:
           type: string
           nullable: true
           format: email
-          example: alex@acquisition.com
+          example: alex.hormozi@acquisition.com
         emailValidity:
           type: string
           nullable: true
-          enum: [valid, valid-risky, invalid, unknown]
+          enum: [valid, catchall, invalid, unknown]
           description: Email verification result
 
     Pagination:
@@ -2769,10 +2870,26 @@ components:
           type: integer
 
 webhooks:
+  x-webhook-security:
+    description: |
+      **Authentication:** Every webhook request includes an `X-Webhook-Key` header containing
+      the secret value configured in your Settings page. Your endpoint MUST verify this header
+      before processing the payload to prevent unauthorized requests.
+
   new_reply:
     post:
       summary: New reply received
-      description: Sent when a prospect replies to your DM for the first time
+      description: |
+        Sent when a prospect replies to your DM for the first time.
+
+        **Authentication:** Verify the `X-Webhook-Key` header matches your configured secret.
+      parameters:
+        - name: X-Webhook-Key
+          in: header
+          required: true
+          description: Webhook authentication secret configured in Settings.
+          schema:
+            type: string
       requestBody:
         content:
           application/json:
@@ -2785,7 +2902,17 @@ webhooks:
   reply_back_and_forth:
     post:
       summary: Back-and-forth reply
-      description: Sent when a prospect sends a follow-up reply in an existing conversation
+      description: |
+        Sent when a prospect sends a follow-up reply in an existing conversation.
+
+        **Authentication:** Verify the `X-Webhook-Key` header matches your configured secret.
+      parameters:
+        - name: X-Webhook-Key
+          in: header
+          required: true
+          description: Webhook authentication secret configured in Settings.
+          schema:
+            type: string
       requestBody:
         content:
           application/json:
@@ -2798,7 +2925,17 @@ webhooks:
   account_paused:
     post:
       summary: Account paused
-      description: Sent when a Twitter account is disconnected or paused
+      description: |
+        Sent when a Twitter account is disconnected or paused.
+
+        **Authentication:** Verify the `X-Webhook-Key` header matches your configured secret.
+      parameters:
+        - name: X-Webhook-Key
+          in: header
+          required: true
+          description: Webhook authentication secret configured in Settings.
+          schema:
+            type: string
       requestBody:
         content:
           application/json:
@@ -2815,6 +2952,15 @@ webhooks:
       description: |
         **DEPRECATED** - This webhook is temporarily unavailable.
         The leads_exhausted webhook is being redesigned. Please check back later or contact support for updates.
+
+        **Authentication:** Verify the `X-Webhook-Key` header matches your configured secret.
+      parameters:
+        - name: X-Webhook-Key
+          in: header
+          required: true
+          description: Webhook authentication secret configured in Settings.
+          schema:
+            type: string
       requestBody:
         content:
           application/json:
