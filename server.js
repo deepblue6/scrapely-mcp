@@ -13,6 +13,18 @@ const API_BASE = "https://app.scrapely.co/api/v1";
 const HTTP_MODE = process.env.PORT || process.argv.includes("--http");
 const PORT = parseInt(process.env.PORT, 10) || 3000;
 
+// ─── Logger ─────────────────────────────────────────────────────────────────
+
+function log(category, message, data = {}) {
+  const entry = {
+    ts: new Date().toISOString(),
+    cat: category,
+    msg: message,
+    ...data,
+  };
+  console.log(JSON.stringify(entry));
+}
+
 // In stdio mode, require SCRAPELY_API_KEY upfront.
 // In HTTP mode, each request provides the key via Bearer token.
 if (!HTTP_MODE) {
@@ -62,9 +74,28 @@ async function apiCall(apiKey, method, path, body = null, queryParams = null) {
 
 // ─── Tool Registration ──────────────────────────────────────────────────────
 
-function registerTools(server, getApiKey) {
-  const call = (method, path, body, queryParams) =>
-    apiCall(getApiKey(), method, path, body, queryParams);
+function registerTools(server, getApiKey, sessionLabel = "stdio") {
+  const keyPrefix = () => getApiKey().substring(0, 12) + "...";
+
+  const call = async (method, path, body, queryParams) => {
+    const result = await apiCall(getApiKey(), method, path, body, queryParams);
+    return result;
+  };
+
+  // Wrap server.tool to auto-log every tool call
+  const origTool = server.tool.bind(server);
+  server.tool = (name, description, schema, handler) => {
+    origTool(name, description, schema, async (...args) => {
+      log("tool", name, { key: keyPrefix(), session: sessionLabel });
+      try {
+        const result = await handler(...args);
+        return result;
+      } catch (err) {
+        log("tool_error", `${name} failed`, { error: err.message, key: keyPrefix(), session: sessionLabel });
+        throw err;
+      }
+    });
+  };
 
   server.tool("list_accounts", "List all connected Twitter/X accounts in the workspace", {}, async () => {
     const data = await call("GET", "/accounts");
@@ -432,7 +463,8 @@ async function startHttp() {
   }
 
   // Helper: send 429
-  function tooManyRequests(res) {
+  function tooManyRequests(res, ip, bucket) {
+    log("rate_limit", "rate limit hit", { ip, bucket });
     res.writeHead(429, { "Content-Type": "application/json", "Retry-After": "60" });
     res.end(JSON.stringify({ error: "too_many_requests", error_description: "Rate limit exceeded. Try again later." }));
   }
@@ -467,6 +499,12 @@ async function startHttp() {
 
     const url = parseUrl(req);
     const pathname = url.pathname;
+    const ip = getIP(req);
+
+    // Log all non-OPTIONS requests (skip health checks and static metadata)
+    if (pathname !== "/health" && !pathname.startsWith("/.well-known")) {
+      log("req", `${req.method} ${pathname}`, { ip });
+    }
 
     // ─── Health check ────────────────────────────────────────────────────
     if (pathname === "/health") {
@@ -507,7 +545,7 @@ async function startHttp() {
     // ─── Dynamic Client Registration (RFC 7591) ─────────────────────────
     if (pathname === "/register" && req.method === "POST") {
       // Rate limit: 20 registrations per IP per minute
-      if (rateLimit(getIP(req), "register", 20, 60000)) return tooManyRequests(res);
+      if (rateLimit(ip, "register", 20, 60000)) return tooManyRequests(res, ip, "register");
 
       const body = await readBody(req);
       let data;
@@ -528,6 +566,7 @@ async function startHttp() {
         createdAt: Date.now(),
       };
       clients.set(clientId, clientInfo);
+      log("auth", "client registered", { clientId, clientName: clientInfo.client_name, ip });
 
       res.writeHead(201, { "Content-Type": "application/json" });
       res.end(JSON.stringify(clientInfo));
@@ -557,6 +596,7 @@ async function startHttp() {
       consentUrl.searchParams.set("code_challenge", codeChallenge);
       consentUrl.searchParams.set("code_challenge_method", codeChallengeMethod);
 
+      log("auth", "redirecting to consent", { clientId, ip });
       res.writeHead(302, { Location: consentUrl.toString() });
       res.end();
       return;
@@ -567,7 +607,7 @@ async function startHttp() {
     // by the Scrapely app's /api/oauth/authorize endpoint.
     if (pathname === "/token" && req.method === "POST") {
       // Rate limit: 30 token requests per IP per minute
-      if (rateLimit(getIP(req), "token", 30, 60000)) return tooManyRequests(res);
+      if (rateLimit(ip, "token", 30, 60000)) return tooManyRequests(res, ip, "token");
 
       const body = await readBody(req);
       const params = new URLSearchParams(body);
@@ -647,6 +687,9 @@ async function startHttp() {
       );
 
       // The access token IS the Scrapely API key
+      const tokenKeyPrefix = stored.api_key.substring(0, 12) + "...";
+      log("auth", "token exchanged", { customer_id: stored.customer_id, key: tokenKeyPrefix, ip });
+
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({
         access_token: stored.api_key,
@@ -693,8 +736,10 @@ async function startHttp() {
     }
 
     // New session
+    const keyPfx = apiKey.substring(0, 12) + "...";
+    log("session", "new MCP session", { key: keyPfx, ip });
     const mcpServer = new McpServer({ name: "Scrapely", version: "1.5.0" });
-    registerTools(mcpServer, () => apiKey);
+    registerTools(mcpServer, () => apiKey, keyPfx);
 
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: () => randomUUID(),
