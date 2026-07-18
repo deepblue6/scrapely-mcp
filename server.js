@@ -390,8 +390,30 @@ async function startStdio() {
 
 async function startHttp() {
   const sessions = new Map();
+  // Stores: auth code -> { apiKey, clientId, redirectUri, codeChallenge, codeChallengeMethod }
+  const authCodes = new Map();
+  // Stores: clientId -> { client_id, redirect_uris, ... }
+  const clients = new Map();
+
+  const BASE_URL = process.env.BASE_URL || `https://mcp.scrapely.co`;
+
+  // Helper to read request body
+  function readBody(req) {
+    return new Promise((resolve, reject) => {
+      let body = "";
+      req.on("data", (chunk) => (body += chunk));
+      req.on("end", () => resolve(body));
+      req.on("error", reject);
+    });
+  }
+
+  // Helper to parse URL with base
+  function parseUrl(req) {
+    return new URL(req.url, BASE_URL);
+  }
 
   const httpServer = createServer(async (req, res) => {
+    // CORS
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Mcp-Session-Id");
@@ -403,13 +425,213 @@ async function startHttp() {
       return;
     }
 
-    if (req.url === "/health") {
+    const url = parseUrl(req);
+    const pathname = url.pathname;
+
+    // ─── Health check ────────────────────────────────────────────────────
+    if (pathname === "/health") {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ status: "ok" }));
       return;
     }
 
-    if (req.url !== "/mcp") {
+    // ─── OAuth Protected Resource Metadata (RFC 9728) ────────────────────
+    if (pathname === "/.well-known/oauth-protected-resource" || pathname === "/.well-known/oauth-protected-resource/mcp") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({
+        resource: `${BASE_URL}/mcp`,
+        authorization_servers: [`${BASE_URL}`],
+        bearer_methods_supported: ["header"],
+        resource_name: "Scrapely MCP",
+      }));
+      return;
+    }
+
+    // ─── OAuth Authorization Server Metadata (RFC 8414) ──────────────────
+    if (pathname === "/.well-known/oauth-authorization-server") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({
+        issuer: BASE_URL,
+        authorization_endpoint: `${BASE_URL}/authorize`,
+        token_endpoint: `${BASE_URL}/token`,
+        registration_endpoint: `${BASE_URL}/register`,
+        response_types_supported: ["code"],
+        grant_types_supported: ["authorization_code"],
+        token_endpoint_auth_methods_supported: ["none"],
+        code_challenge_methods_supported: ["S256", "plain"],
+        scopes_supported: [],
+      }));
+      return;
+    }
+
+    // ─── Dynamic Client Registration (RFC 7591) ─────────────────────────
+    if (pathname === "/register" && req.method === "POST") {
+      const body = await readBody(req);
+      let data;
+      try { data = JSON.parse(body); } catch {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "invalid_request" }));
+        return;
+      }
+
+      const clientId = `client_${randomUUID()}`;
+      const clientInfo = {
+        client_id: clientId,
+        client_name: data.client_name || "MCP Client",
+        redirect_uris: data.redirect_uris || [],
+        grant_types: ["authorization_code"],
+        response_types: ["code"],
+        token_endpoint_auth_method: "none",
+      };
+      clients.set(clientId, clientInfo);
+
+      res.writeHead(201, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(clientInfo));
+      return;
+    }
+
+    // ─── Authorization Endpoint ──────────────────────────────────────────
+    if (pathname === "/authorize" && req.method === "GET") {
+      const clientId = url.searchParams.get("client_id");
+      const redirectUri = url.searchParams.get("redirect_uri");
+      const state = url.searchParams.get("state");
+      const codeChallenge = url.searchParams.get("code_challenge");
+      const codeChallengeMethod = url.searchParams.get("code_challenge_method") || "plain";
+
+      if (!clientId || !redirectUri) {
+        res.writeHead(400, { "Content-Type": "text/html" });
+        res.end("<h1>Bad Request</h1><p>Missing client_id or redirect_uri</p>");
+        return;
+      }
+
+      // Show a simple page where the user enters their Scrapely API key
+      res.writeHead(200, { "Content-Type": "text/html" });
+      res.end(`<!DOCTYPE html>
+<html>
+<head>
+  <title>Connect Scrapely to Claude</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #fff; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .card { background: #1a1a1a; border: 1px solid #333; border-radius: 16px; padding: 40px; max-width: 420px; width: 100%; }
+    h1 { font-size: 24px; margin-bottom: 8px; }
+    p { color: #888; font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
+    label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 8px; }
+    input { width: 100%; padding: 12px 16px; background: #0a0a0a; border: 1px solid #333; border-radius: 8px; color: #fff; font-size: 14px; font-family: monospace; outline: none; }
+    input:focus { border-color: #4f8ff7; }
+    button { width: 100%; padding: 12px; background: #4f8ff7; color: #fff; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 16px; }
+    button:hover { background: #3a7be0; }
+    .help { font-size: 12px; color: #666; margin-top: 12px; }
+    a { color: #4f8ff7; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Connect Scrapely</h1>
+    <p>Enter your Scrapely API key to connect your workspace to Claude.</p>
+    <form method="POST" action="/authorize">
+      <input type="hidden" name="client_id" value="${clientId}">
+      <input type="hidden" name="redirect_uri" value="${redirectUri}">
+      <input type="hidden" name="state" value="${state || ""}">
+      <input type="hidden" name="code_challenge" value="${codeChallenge || ""}">
+      <input type="hidden" name="code_challenge_method" value="${codeChallengeMethod}">
+      <label for="api_key">API Key</label>
+      <input type="password" id="api_key" name="api_key" placeholder="sk_live_..." required>
+      <button type="submit">Connect</button>
+      <p class="help">Find your API key in <a href="https://app.scrapely.co/settings" target="_blank">Scrapely Settings</a></p>
+    </form>
+  </div>
+</body>
+</html>`);
+      return;
+    }
+
+    // ─── Authorization POST (form submission) ────────────────────────────
+    if (pathname === "/authorize" && req.method === "POST") {
+      const body = await readBody(req);
+      const params = new URLSearchParams(body);
+      const apiKey = params.get("api_key");
+      const clientId = params.get("client_id");
+      const redirectUri = params.get("redirect_uri");
+      const state = params.get("state");
+      const codeChallenge = params.get("code_challenge");
+      const codeChallengeMethod = params.get("code_challenge_method") || "plain";
+
+      if (!apiKey || !redirectUri) {
+        res.writeHead(400, { "Content-Type": "text/html" });
+        res.end("<h1>Bad Request</h1><p>Missing API key or redirect URI</p>");
+        return;
+      }
+
+      // Generate auth code and store the API key with it
+      const code = randomUUID();
+      authCodes.set(code, { apiKey, clientId, redirectUri, codeChallenge, codeChallengeMethod });
+      // Expire after 5 minutes
+      setTimeout(() => authCodes.delete(code), 5 * 60 * 1000);
+
+      // Redirect back to Claude with the auth code
+      const redirect = new URL(redirectUri);
+      redirect.searchParams.set("code", code);
+      if (state) redirect.searchParams.set("state", state);
+
+      res.writeHead(302, { Location: redirect.toString() });
+      res.end();
+      return;
+    }
+
+    // ─── Token Endpoint ──────────────────────────────────────────────────
+    if (pathname === "/token" && req.method === "POST") {
+      const body = await readBody(req);
+      const params = new URLSearchParams(body);
+      const grantType = params.get("grant_type");
+      const code = params.get("code");
+      const codeVerifier = params.get("code_verifier");
+
+      if (grantType !== "authorization_code" || !code) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "invalid_request" }));
+        return;
+      }
+
+      const stored = authCodes.get(code);
+      if (!stored) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "invalid_grant", error_description: "Code expired or invalid" }));
+        return;
+      }
+
+      // Verify PKCE if code_challenge was provided
+      if (stored.codeChallenge) {
+        let valid = false;
+        if (stored.codeChallengeMethod === "plain") {
+          valid = codeVerifier === stored.codeChallenge;
+        } else if (stored.codeChallengeMethod === "S256") {
+          const { createHash } = await import("node:crypto");
+          const hash = createHash("sha256").update(codeVerifier || "").digest("base64url");
+          valid = hash === stored.codeChallenge;
+        }
+        if (!valid) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "invalid_grant", error_description: "PKCE verification failed" }));
+          return;
+        }
+      }
+
+      // The access token IS the Scrapely API key
+      authCodes.delete(code);
+
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({
+        access_token: stored.apiKey,
+        token_type: "Bearer",
+        scope: "",
+      }));
+      return;
+    }
+
+    // ─── MCP Endpoint ────────────────────────────────────────────────────
+    if (pathname !== "/mcp") {
       res.writeHead(404);
       res.end("Not found");
       return;
@@ -420,9 +642,9 @@ async function startHttp() {
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       res.writeHead(401, {
         "Content-Type": "application/json",
-        "WWW-Authenticate": 'Bearer realm="Scrapely MCP"',
+        "WWW-Authenticate": `Bearer resource_metadata="${BASE_URL}/.well-known/oauth-protected-resource"`,
       });
-      res.end(JSON.stringify({ error: "Missing or invalid Authorization header. Use: Bearer <your_scrapely_api_key>" }));
+      res.end(JSON.stringify({ error: "unauthorized" }));
       return;
     }
     const apiKey = authHeader.slice(7).trim();
@@ -465,7 +687,8 @@ async function startHttp() {
 
   httpServer.listen(PORT, "0.0.0.0", () => {
     console.log(`Scrapely MCP Server running on http://0.0.0.0:${PORT}/mcp`);
-    console.log("Auth: Bearer <scrapely_api_key>");
+    console.log(`Base URL: ${BASE_URL}`);
+    console.log("Auth: OAuth 2.1 with PKCE (API key as access token)");
   });
 }
 
