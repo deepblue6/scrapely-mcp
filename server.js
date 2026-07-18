@@ -679,10 +679,11 @@ async function startHttp() {
     };
 
     await mcpServer.connect(transport);
+    await transport.handleRequest(req, res);
+
+    // Session ID is generated during handleRequest (on initialize)
     const sid = transport.sessionId;
     if (sid) sessions.set(sid, { server: mcpServer, transport });
-
-    await transport.handleRequest(req, res);
   });
 
   httpServer.listen(PORT, "0.0.0.0", () => {
