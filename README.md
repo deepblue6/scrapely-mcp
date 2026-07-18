@@ -4,29 +4,38 @@ An MCP (Model Context Protocol) server that wraps the [Scrapely](https://scrapel
 
 **GitHub:** [github.com/deepblue6/scrapely-mcp](https://github.com/deepblue6/scrapely-mcp)
 
-## Install
-
-```bash
-npm install -g scrapely-mcp
-```
-
-Or run it directly without installing:
-
-```bash
-npx scrapely-mcp
-```
-
-## Setup
+## Quick Start
 
 You need a Scrapely API key. Generate one from **Settings** in your [Scrapely dashboard](https://app.scrapely.co).
 
-### Claude Code
+### Use in Claude (claude.ai) — Recommended
+
+Add Scrapely as a connector in Claude. No install needed.
+
+1. Go to **Claude Settings → Connectors → Add custom connector**
+2. Fill in:
+   - **Name:** `Scrapely`
+   - **Remote MCP server URL:** `https://mcp.scrapely.co/mcp`
+3. Click **Add**
+4. When prompted, enter your Scrapely API key
+
+That's it. Open any Claude conversation and start using Scrapely tools.
+
+### Use in Claude Code
+
+One command:
+
+```bash
+claude mcp add scrapely -- npx scrapely-mcp
+```
+
+Then set your API key when prompted, or pass it inline:
 
 ```bash
 claude mcp add scrapely -e SCRAPELY_API_KEY=sk_live_your_key_here -- npx scrapely-mcp
 ```
 
-### Claude Desktop
+### Use in Claude Desktop
 
 Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
 
@@ -59,13 +68,16 @@ Any MCP-compatible client works. Just run `npx scrapely-mcp` with `SCRAPELY_API_
 | `update_proxy` | Update proxy settings for an account |
 | `toggle_pause` | Pause/unpause DM sending |
 | `toggle_followups_pause` | Pause/unpause follow-up messages |
+| `toggle_warmup` | Enable/disable warmup mode |
 | `get_account_tags` | Get tags for accounts |
 | `set_account_tags` | Replace all tags for an account |
 | `update_account_tags` | Add or remove individual tags |
 | `create_scraping_source` | Scrape followers/following with keyword and count filters |
 | `check_scraping_status` | Check progress of scraping jobs |
+| `get_scraping_source_leads` | Get leads from a scraping source |
 | `launch_campaign` | Launch a DM campaign with A/B testing, auto-follow/like/comment |
 | `list_campaigns` | List campaigns with stats |
+| `get_campaign_detail` | Get detailed campaign info and settings |
 | `get_campaign_analytics` | Detailed analytics: reply rates, sentiment, variant stats. Supports date range filtering. |
 | `fetch_conversations` | Fetch conversations with optional message history |
 | `send_dm` | Send a DM to an existing conversation |
@@ -73,6 +85,7 @@ Any MCP-compatible client works. Just run `npx scrapely-mcp` with `SCRAPELY_API_
 | `update_crm` | Update notes, deal value, and tags |
 | `enrich_twitter` | Find a person's Twitter profile from name + company |
 | `enrich_email` | Find a person's email from their Twitter handle |
+| `get_enrichment_credits` | Check enrichment credit balance |
 | `get_webhook_info` | Get webhook event types and payload structure docs |
 | `schedule_tweet` | Schedule a tweet for later |
 | `list_scheduled_tweets` | List scheduled tweets with filters |
@@ -93,6 +106,24 @@ Once connected to Claude, you can say things like:
 - "Find the Twitter profile for John Doe at Acme Corp"
 - "Find the email for @elonmusk"
 - "Pause DM sending on my backup account"
+
+## Self-Hosting the Remote Server
+
+If you want to host the MCP server yourself instead of using `mcp.scrapely.co`:
+
+```bash
+# Clone and install
+git clone https://github.com/deepblue6/scrapely-mcp.git
+cd scrapely-mcp
+npm install
+
+# Run in HTTP mode
+PORT=3100 node server.js
+```
+
+The server listens on `/mcp` and authenticates via `Authorization: Bearer <scrapely_api_key>`.
+
+Put it behind nginx/caddy with TLS, then use your domain as the connector URL.
 
 ## Testing with MCP Inspector
 

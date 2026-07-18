@@ -1,7 +1,7 @@
 {
   "name": "scrapely-mcp",
-  "version": "1.2.0",
-  "description": "MCP Server for the Scrapely Twitter/X DM Automation API — manage campaigns, scrape leads, send DMs, and more through Claude or any MCP client.",
+  "version": "1.5.0",
+  "description": "MCP Server for the Scrapely Twitter/X DM Automation API \u2014 manage campaigns, scrape leads, send DMs, and more through Claude or any MCP client.",
   "type": "module",
   "main": "server.js",
   "bin": {
@@ -13,6 +13,7 @@
   ],
   "scripts": {
     "start": "node server.js",
+    "start:http": "PORT=3000 node server.js",
     "inspect": "npx @modelcontextprotocol/inspector node server.js"
   },
   "keywords": [
