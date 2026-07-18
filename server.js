@@ -390,8 +390,6 @@ async function startStdio() {
 
 async function startHttp() {
   const sessions = new Map();
-  // Stores: auth code -> { apiKey, clientId, redirectUri, codeChallenge, codeChallengeMethod }
-  const authCodes = new Map();
   // Stores: clientId -> { client_id, redirect_uris, ..., createdAt }
   const clients = new Map();
 
@@ -537,99 +535,36 @@ async function startHttp() {
     }
 
     // ─── Authorization Endpoint ──────────────────────────────────────────
+    // Redirect to the Scrapely app consent page (user logs in there)
     if (pathname === "/authorize" && req.method === "GET") {
-      const clientId = url.searchParams.get("client_id");
-      const redirectUri = url.searchParams.get("redirect_uri");
-      const state = url.searchParams.get("state");
-      const codeChallenge = url.searchParams.get("code_challenge");
+      const clientId = url.searchParams.get("client_id") || "";
+      const redirectUri = url.searchParams.get("redirect_uri") || "";
+      const state = url.searchParams.get("state") || "";
+      const codeChallenge = url.searchParams.get("code_challenge") || "";
       const codeChallengeMethod = url.searchParams.get("code_challenge_method") || "plain";
 
-      if (!clientId || !redirectUri) {
+      if (!redirectUri) {
         res.writeHead(400, { "Content-Type": "text/html" });
-        res.end("<h1>Bad Request</h1><p>Missing client_id or redirect_uri</p>");
+        res.end("<h1>Bad Request</h1><p>Missing redirect_uri</p>");
         return;
       }
 
-      // Show a simple page where the user enters their Scrapely API key
-      res.writeHead(200, { "Content-Type": "text/html" });
-      res.end(`<!DOCTYPE html>
-<html>
-<head>
-  <title>Connect Scrapely to Claude</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #fff; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-    .card { background: #1a1a1a; border: 1px solid #333; border-radius: 16px; padding: 40px; max-width: 420px; width: 100%; }
-    h1 { font-size: 24px; margin-bottom: 8px; }
-    p { color: #888; font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
-    label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 8px; }
-    input { width: 100%; padding: 12px 16px; background: #0a0a0a; border: 1px solid #333; border-radius: 8px; color: #fff; font-size: 14px; font-family: monospace; outline: none; }
-    input:focus { border-color: #4f8ff7; }
-    button { width: 100%; padding: 12px; background: #4f8ff7; color: #fff; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 16px; }
-    button:hover { background: #3a7be0; }
-    .help { font-size: 12px; color: #666; margin-top: 12px; }
-    a { color: #4f8ff7; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h1>Connect Scrapely</h1>
-    <p>Enter your Scrapely API key to connect your workspace to Claude.</p>
-    <form method="POST" action="/authorize">
-      <input type="hidden" name="client_id" value="${clientId}">
-      <input type="hidden" name="redirect_uri" value="${redirectUri}">
-      <input type="hidden" name="state" value="${state || ""}">
-      <input type="hidden" name="code_challenge" value="${codeChallenge || ""}">
-      <input type="hidden" name="code_challenge_method" value="${codeChallengeMethod}">
-      <label for="api_key">API Key</label>
-      <input type="password" id="api_key" name="api_key" placeholder="sk_live_..." required>
-      <button type="submit">Connect</button>
-      <p class="help">Find your API key in <a href="https://app.scrapely.co/settings" target="_blank">Scrapely Settings</a></p>
-    </form>
-  </div>
-</body>
-</html>`);
-      return;
-    }
+      const APP_URL = process.env.APP_URL || "https://app.scrapely.co";
+      const consentUrl = new URL(`${APP_URL}/oauth/consent`);
+      consentUrl.searchParams.set("client_id", clientId);
+      consentUrl.searchParams.set("redirect_uri", redirectUri);
+      consentUrl.searchParams.set("state", state);
+      consentUrl.searchParams.set("code_challenge", codeChallenge);
+      consentUrl.searchParams.set("code_challenge_method", codeChallengeMethod);
 
-    // ─── Authorization POST (form submission) ────────────────────────────
-    if (pathname === "/authorize" && req.method === "POST") {
-      // Rate limit: 10 auth attempts per IP per minute
-      if (rateLimit(getIP(req), "authorize", 10, 60000)) return tooManyRequests(res);
-
-      const body = await readBody(req);
-      const params = new URLSearchParams(body);
-      const apiKey = params.get("api_key");
-      const clientId = params.get("client_id");
-      const redirectUri = params.get("redirect_uri");
-      const state = params.get("state");
-      const codeChallenge = params.get("code_challenge");
-      const codeChallengeMethod = params.get("code_challenge_method") || "plain";
-
-      if (!apiKey || !redirectUri) {
-        res.writeHead(400, { "Content-Type": "text/html" });
-        res.end("<h1>Bad Request</h1><p>Missing API key or redirect URI</p>");
-        return;
-      }
-
-      // Generate auth code and store the API key with it
-      const code = randomUUID();
-      authCodes.set(code, { apiKey, clientId, redirectUri, codeChallenge, codeChallengeMethod });
-      // Expire after 5 minutes
-      setTimeout(() => authCodes.delete(code), 5 * 60 * 1000);
-
-      // Redirect back to Claude with the auth code
-      const redirect = new URL(redirectUri);
-      redirect.searchParams.set("code", code);
-      if (state) redirect.searchParams.set("state", state);
-
-      res.writeHead(302, { Location: redirect.toString() });
+      res.writeHead(302, { Location: consentUrl.toString() });
       res.end();
       return;
     }
 
     // ─── Token Endpoint ──────────────────────────────────────────────────
+    // Exchange auth code for access token. Codes are stored in Supabase
+    // by the Scrapely app's /api/oauth/authorize endpoint.
     if (pathname === "/token" && req.method === "POST") {
       // Rate limit: 30 token requests per IP per minute
       if (rateLimit(getIP(req), "token", 30, 60000)) return tooManyRequests(res);
@@ -646,22 +581,51 @@ async function startHttp() {
         return;
       }
 
-      const stored = authCodes.get(code);
+      // Look up the auth code from Supabase
+      const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+      if (!SUPABASE_URL || !SUPABASE_KEY) {
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "server_error", error_description: "Missing Supabase config" }));
+        return;
+      }
+
+      // Fetch the auth code from Supabase
+      const codeRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/mcp_auth_codes?code=eq.${encodeURIComponent(code)}&select=*`,
+        {
+          headers: {
+            apikey: SUPABASE_KEY,
+            Authorization: `Bearer ${SUPABASE_KEY}`,
+          },
+        }
+      );
+      const codeRows = await codeRes.json();
+      const stored = Array.isArray(codeRows) && codeRows[0];
+
       if (!stored) {
         res.writeHead(400, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ error: "invalid_grant", error_description: "Code expired or invalid" }));
         return;
       }
 
+      // Check expiry
+      if (new Date(stored.expires_at) < new Date()) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "invalid_grant", error_description: "Code expired" }));
+        return;
+      }
+
       // Verify PKCE if code_challenge was provided
-      if (stored.codeChallenge) {
+      if (stored.code_challenge) {
         let valid = false;
-        if (stored.codeChallengeMethod === "plain") {
-          valid = codeVerifier === stored.codeChallenge;
-        } else if (stored.codeChallengeMethod === "S256") {
+        if (stored.code_challenge_method === "plain") {
+          valid = codeVerifier === stored.code_challenge;
+        } else if (stored.code_challenge_method === "S256") {
           const { createHash } = await import("node:crypto");
           const hash = createHash("sha256").update(codeVerifier || "").digest("base64url");
-          valid = hash === stored.codeChallenge;
+          valid = hash === stored.code_challenge;
         }
         if (!valid) {
           res.writeHead(400, { "Content-Type": "application/json" });
@@ -670,12 +634,22 @@ async function startHttp() {
         }
       }
 
-      // The access token IS the Scrapely API key
-      authCodes.delete(code);
+      // Delete the used code
+      await fetch(
+        `${SUPABASE_URL}/rest/v1/mcp_auth_codes?code=eq.${encodeURIComponent(code)}`,
+        {
+          method: "DELETE",
+          headers: {
+            apikey: SUPABASE_KEY,
+            Authorization: `Bearer ${SUPABASE_KEY}`,
+          },
+        }
+      );
 
+      // The access token IS the Scrapely API key
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({
-        access_token: stored.apiKey,
+        access_token: stored.api_key,
         token_type: "Bearer",
         scope: "",
       }));
