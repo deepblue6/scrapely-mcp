@@ -392,10 +392,52 @@ async function startHttp() {
   const sessions = new Map();
   // Stores: auth code -> { apiKey, clientId, redirectUri, codeChallenge, codeChallengeMethod }
   const authCodes = new Map();
-  // Stores: clientId -> { client_id, redirect_uris, ... }
+  // Stores: clientId -> { client_id, redirect_uris, ..., createdAt }
   const clients = new Map();
 
   const BASE_URL = process.env.BASE_URL || `https://mcp.scrapely.co`;
+
+  // ─── Rate Limiter ──────────────────────────────────────────────────────
+  // Simple in-memory per-IP rate limiter. windowMs = time window, max = max requests.
+  const rateLimitBuckets = new Map();
+  function rateLimit(ip, bucket, max, windowMs) {
+    const key = `${bucket}:${ip}`;
+    const now = Date.now();
+    let entry = rateLimitBuckets.get(key);
+    if (!entry || now - entry.start > windowMs) {
+      entry = { start: now, count: 0 };
+      rateLimitBuckets.set(key, entry);
+    }
+    entry.count++;
+    return entry.count > max;
+  }
+  // Clean up stale rate limit entries every 5 minutes
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, entry] of rateLimitBuckets) {
+      if (now - entry.start > 300000) rateLimitBuckets.delete(key);
+    }
+  }, 300000);
+
+  // ─── Client Registration TTL ──────────────────────────────────────────
+  // Expire unused client registrations after 1 hour
+  setInterval(() => {
+    const now = Date.now();
+    for (const [id, client] of clients) {
+      if (now - client.createdAt > 3600000) clients.delete(id);
+    }
+  }, 600000);
+
+  // Helper: get client IP (behind Caddy proxy)
+  function getIP(req) {
+    return (req.headers["x-forwarded-for"] || "").split(",")[0].trim() || req.socket.remoteAddress;
+  }
+
+  // Helper: send 429
+  function tooManyRequests(res) {
+    res.writeHead(429, { "Content-Type": "application/json", "Retry-After": "60" });
+    res.end(JSON.stringify({ error: "too_many_requests", error_description: "Rate limit exceeded. Try again later." }));
+  }
 
   // Helper to read request body
   function readBody(req) {
@@ -466,6 +508,9 @@ async function startHttp() {
 
     // ─── Dynamic Client Registration (RFC 7591) ─────────────────────────
     if (pathname === "/register" && req.method === "POST") {
+      // Rate limit: 20 registrations per IP per minute
+      if (rateLimit(getIP(req), "register", 20, 60000)) return tooManyRequests(res);
+
       const body = await readBody(req);
       let data;
       try { data = JSON.parse(body); } catch {
@@ -482,6 +527,7 @@ async function startHttp() {
         grant_types: ["authorization_code"],
         response_types: ["code"],
         token_endpoint_auth_method: "none",
+        createdAt: Date.now(),
       };
       clients.set(clientId, clientInfo);
 
@@ -549,6 +595,9 @@ async function startHttp() {
 
     // ─── Authorization POST (form submission) ────────────────────────────
     if (pathname === "/authorize" && req.method === "POST") {
+      // Rate limit: 10 auth attempts per IP per minute
+      if (rateLimit(getIP(req), "authorize", 10, 60000)) return tooManyRequests(res);
+
       const body = await readBody(req);
       const params = new URLSearchParams(body);
       const apiKey = params.get("api_key");
@@ -582,6 +631,9 @@ async function startHttp() {
 
     // ─── Token Endpoint ──────────────────────────────────────────────────
     if (pathname === "/token" && req.method === "POST") {
+      // Rate limit: 30 token requests per IP per minute
+      if (rateLimit(getIP(req), "token", 30, 60000)) return tooManyRequests(res);
+
       const body = await readBody(req);
       const params = new URLSearchParams(body);
       const grantType = params.get("grant_type");
