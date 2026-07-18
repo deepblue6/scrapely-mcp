@@ -23,16 +23,21 @@ That's it. Open any Claude conversation and start using Scrapely tools.
 
 ### Use in Claude Code
 
-One command:
+One command (replace `sk_live_...` with your real key):
 
 ```bash
-claude mcp add scrapely -- npx scrapely-mcp
+claude mcp add --transport http --scope user scrapely https://mcp.scrapely.co/mcp \
+  --header "Authorization: Bearer sk_live_your_key_here"
 ```
 
-Then set your API key when prompted, or pass it inline:
+No install, no Node.js required. The `--scope user` flag makes it available across all your projects.
+
+To update or rotate your key, remove and re-add:
 
 ```bash
-claude mcp add scrapely -e SCRAPELY_API_KEY=sk_live_your_key_here -- npx scrapely-mcp
+claude mcp remove scrapely --scope user
+claude mcp add --transport http --scope user scrapely https://mcp.scrapely.co/mcp \
+  --header "Authorization: Bearer sk_live_new_key_here"
 ```
 
 ### Use in Claude Desktop
