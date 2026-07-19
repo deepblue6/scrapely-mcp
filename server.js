@@ -220,7 +220,7 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
     return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
   });
 
-  server.tool("check_scraping_status", "Check the status of scraping jobs.", {
+  server.tool("check_scraping_status", "Check the status of scraping jobs, including the filters used when creating the source.", {
     id: z.string().optional().describe("Specific scraping source ID"),
     limit: z.number().optional().describe("Results per page (max 100)"),
     offset: z.number().optional().describe("Pagination offset"),
