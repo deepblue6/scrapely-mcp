@@ -308,10 +308,10 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
     return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
   });
 
-  server.tool("get_campaign_detail", "Get detailed info for a specific campaign.", {
-    campaign_id: z.string().describe("The campaign UUID"),
-  }, async ({ campaign_id }) => {
-    const data = await call("GET", `/campaigns/${campaign_id}`);
+  server.tool("get_campaign_detail", "Get detailed analytics for a single campaign — totals, per-account breakdown, replies, settings (message variants, followups, engagement, send window), and pause state.", {
+    campaign_name: z.string().describe("The campaign name (unique per workspace). Use list_campaigns to find names."),
+  }, async ({ campaign_name }) => {
+    const data = await call("GET", `/campaigns/${encodeURIComponent(campaign_name)}`);
     return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
   });
 
