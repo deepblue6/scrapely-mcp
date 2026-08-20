@@ -259,8 +259,44 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
     enable_like: z.boolean().optional(),
     enable_comment: z.boolean().optional(),
     comment_template: z.string().optional(),
+    send_window_start: z.string().optional().describe("Start time for send window in HH:MM 24h format (e.g. '09:00')"),
+    send_window_end: z.string().optional().describe("End time for send window in HH:MM 24h format (e.g. '17:00')"),
+    send_timezone: z.string().optional().describe("IANA timezone for send window (e.g. 'Australia/Sydney')"),
+    send_days: z.array(z.number()).optional().describe("Days of week to send (0=Sun, 1=Mon, ..., 6=Sat)"),
   }, async (args) => {
     const data = await call("POST", "/campaigns", { ...args });
+    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+  });
+
+  server.tool("pause_campaign", "Pause or unpause a campaign.", {
+    campaign_name: z.string().describe("Campaign name"),
+    is_paused: z.boolean().describe("true to pause, false to unpause"),
+  }, async (args) => {
+    const data = await call("POST", "/campaigns/pause", { ...args });
+    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+  });
+
+  server.tool("edit_campaign", "Edit settings for an existing campaign — message variants, followups, engagement actions, send window/days.", {
+    campaign_name: z.string().describe("Campaign name"),
+    message_variants: z.array(z.object({
+      message: z.string(),
+      followups: z.array(z.object({
+        wait_time: z.number(),
+        wait_unit: z.enum(["hours", "days", "weeks"]),
+        message: z.string(),
+      })).optional(),
+    })).optional().describe("Updated message variants"),
+    followups: z.array(z.object({ wait_time: z.number(), wait_unit: z.enum(["hours", "days", "weeks"]), message: z.string() })).optional(),
+    enable_follow: z.boolean().optional(),
+    enable_like: z.boolean().optional(),
+    enable_comment: z.boolean().optional(),
+    comment_template: z.string().optional(),
+    send_window_start: z.string().optional().describe("Start time HH:MM 24h format (e.g. '09:00')"),
+    send_window_end: z.string().optional().describe("End time HH:MM 24h format (e.g. '17:00')"),
+    send_timezone: z.string().optional().describe("IANA timezone (e.g. 'Australia/Sydney')"),
+    send_days: z.array(z.number()).optional().describe("Days of week (0=Sun ... 6=Sat)"),
+  }, async (args) => {
+    const data = await call("POST", "/campaigns/settings", { ...args });
     return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
   });
 
