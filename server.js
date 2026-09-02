@@ -412,6 +412,46 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
     return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
   });
 
+  // ─── PEOPLE DATABASE ───────────────────────────────────────────────────────
+
+  server.tool("search_people", "Search the Scrapely People database — millions of Twitter/X profiles. Filter by bio keywords, location, follower/following counts, website, and more. Count-only queries are free; row queries cost 1 credit per row.", {
+    bio_contains: z.array(z.string()).optional().describe("Bio must contain ANY of these keywords (case-insensitive)"),
+    bio_contains_all: z.array(z.string()).optional().describe("Bio must contain ALL of these keywords"),
+    bio_excludes: z.array(z.string()).optional().describe("Exclude profiles whose bio contains any of these"),
+    name_contains: z.array(z.string()).optional().describe("Name must contain ANY of these keywords"),
+    name_contains_all: z.array(z.string()).optional().describe("Name must contain ALL of these keywords"),
+    location_contains: z.array(z.string()).optional().describe("Location must contain ANY of these keywords"),
+    location_contains_all: z.array(z.string()).optional().describe("Location must contain ALL of these keywords"),
+    location_excludes: z.array(z.string()).optional().describe("Exclude profiles with location containing any of these"),
+    handle_contains: z.string().optional().describe("Handle must contain this substring"),
+    min_followers: z.number().optional().describe("Minimum follower count"),
+    max_followers: z.number().optional().describe("Maximum follower count"),
+    min_following: z.number().optional().describe("Minimum following count"),
+    max_following: z.number().optional().describe("Maximum following count"),
+    has_website: z.boolean().optional().describe("Filter by whether profile has a website"),
+    min_updated_at: z.string().optional().describe("Only profiles updated on or after this date (ISO 8601)"),
+    max_updated_at: z.string().optional().describe("Only profiles updated on or before this date (ISO 8601)"),
+    fields: z.array(z.string()).optional().describe("Specific fields to return"),
+    count_only: z.boolean().optional().describe("Return only the count (free, no credits used)"),
+    sort_by: z.enum(["follower_count", "following_count", "updated_at", "twitter_handle", "name"]).optional(),
+    sort_order: z.enum(["desc", "asc"]).optional(),
+    limit: z.number().optional().describe("Max rows to return (max 1,000)"),
+    offset: z.number().optional().describe("Pagination offset"),
+  }, async (params) => {
+    const data = await call("POST", "/people/search", params);
+    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+  });
+
+  server.tool("get_people_credits", "Check your People database search credits balance and reset date.", {}, async () => {
+    const data = await call("GET", "/people/credits");
+    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+  });
+
+  server.tool("get_people_schema", "Get the People database table schema — all available columns and their data types.", {}, async () => {
+    const data = await call("GET", "/people/schema");
+    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+  });
+
   // ─── SCHEDULED TWEETS ──────────────────────────────────────────────────────
 
   server.tool("schedule_tweet", "Schedule a tweet to be posted at a specific time", {
