@@ -148,6 +148,14 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
     return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
   });
 
+  server.tool("update_handle", "Update the Twitter/X handle for an existing account. Useful when the account's username has changed.", {
+    account_id: z.string().describe("The account UUID"),
+    handle: z.string().describe("The new Twitter handle (with or without @)"),
+  }, async ({ account_id, handle }) => {
+    const data = await call("PATCH", "/accounts/handle", { account_id, handle });
+    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+  });
+
   server.tool("update_proxy", "Update proxy settings for an existing Twitter/X account.", {
     account_id: z.string().describe("The account UUID"),
     proxy: z.string().describe("Proxy URL"),
