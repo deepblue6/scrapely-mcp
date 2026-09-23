@@ -202,7 +202,7 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
 
   // ─── LEAD SCRAPING ─────────────────────────────────────────────────────────
 
-  server.tool("create_scraping_source", "Create a new lead source by scraping followers/following from Twitter/X accounts.", {
+  server.tool("create_scraping_source", "Create a new lead source by scraping followers/following from Twitter/X accounts. Supports keyword filters, follower/following ranges, location exclusions, website, blue verified, DMs open/closed, and last active filters.", {
     name: z.string().describe("Name for the lead source"),
     sources: z.array(z.object({
       handle: z.string().describe("Twitter handle to scrape"),
@@ -220,6 +220,9 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
       followers: z.object({ min: z.number().optional(), max: z.number().optional() }).optional(),
       following: z.object({ min: z.number().optional(), max: z.number().optional() }).optional(),
       hasWebsite: z.boolean().nullable().optional(),
+      isBlueVerified: z.boolean().nullable().optional().describe("true = only Blue Verified, false = only non-verified, null = no filter"),
+      dmsOpen: z.boolean().nullable().optional().describe("true = only DMs open, false = only DMs closed, null = no filter"),
+      lastActiveHours: z.number().nullable().optional().describe("Only keep leads active within this many hours (e.g. 24)"),
     }).optional().describe("Filter configuration"),
   }, async ({ name, sources, filters }) => {
     const body = { name, sources };
