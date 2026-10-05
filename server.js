@@ -249,6 +249,40 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
     return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
   });
 
+  server.tool("import_leads", "Import your own list of leads (e.g. from a CSV) into a new lead source, ready to use in campaigns. Handles can be 'name', '@name', or x.com profile URLs. Duplicates and handles already in the account are skipped. Large lists are sent in 5,000-lead chunks automatically.", {
+    name: z.string().describe("Name for the new lead source (must not already exist)"),
+    leads: z.array(z.object({
+      twitter_handle: z.string().describe("Twitter handle, @handle, or x.com profile URL"),
+      name: z.string().optional(),
+      description: z.string().optional().describe("Bio"),
+      follower_count: z.number().optional(),
+      following_count: z.number().optional(),
+      website: z.string().optional(),
+      location: z.string().optional(),
+    })).min(1).describe("Leads to import"),
+  }, async ({ name, leads }) => {
+    // The API takes max 5,000 leads per request; later chunks with the same
+    // name append to the lead source created by the first one.
+    const CHUNK_SIZE = 5000;
+    const summary = { lead_source_id: null, lead_source_name: name, imported_count: 0, skipped_count: 0, invalid_count: 0 };
+
+    for (let i = 0; i < leads.length; i += CHUNK_SIZE) {
+      try {
+        const data = await call("POST", "/import-leads", { name, leads: leads.slice(i, i + CHUNK_SIZE) });
+        summary.lead_source_id = data.lead_source_id;
+        summary.imported_count += data.imported_count || 0;
+        summary.skipped_count += data.skipped_count || 0;
+        summary.invalid_count += data.invalid_count || 0;
+      } catch (err) {
+        summary.error = err.message;
+        summary.not_sent_count = leads.length - i;
+        break;
+      }
+    }
+
+    return { content: [{ type: "text", text: JSON.stringify(summary, null, 2) }] };
+  });
+
   // ─── CAMPAIGNS ─────────────────────────────────────────────────────────────
 
   server.tool("launch_campaign", "Launch a DM campaign targeting leads from scraping sources.", {
