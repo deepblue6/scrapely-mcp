@@ -313,6 +313,65 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
     return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
   });
 
+  server.tool("launch_import_campaign", "Launch a DM campaign from your own lead list (e.g. a CSV) with custom data columns — same as Import Campaign in the dashboard. Each lead's custom_fields fill {{variables}} in the message, follow-ups and comment; {{Hi|Hey}} spintax is supported. Duplicate handles and handles already in the campaign are skipped. Large lists are sent in chunks automatically.", {
+    name: z.string().describe("Campaign name (must not already exist)"),
+    message: z.string().describe("Message template, e.g. '{{Hey|Hi}} {{firstName}}, loved what {{company}} is doing'"),
+    leads: z.array(z.object({
+      twitter_handle: z.string().describe("Twitter handle, @handle, or x.com profile URL"),
+      custom_fields: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional().describe("{ columnName: value } used by {{columnName}} in templates"),
+      comment: z.string().optional().describe("Comment for this lead (overrides comment_template)"),
+    })).min(1).describe("Leads to message"),
+    followups: z.array(z.object({ wait_time: z.number(), wait_unit: z.enum(["seconds", "minutes", "hours", "days", "weeks"]), message: z.string() })).optional().describe("Follow-up templates (same {{variables}} allowed)"),
+    account_ids: z.array(z.string()).optional().describe("Account IDs to send from (defaults to all active)"),
+    enable_follow: z.boolean().optional(),
+    enable_like: z.boolean().optional(),
+    enable_comment: z.boolean().optional(),
+    comment_template: z.string().optional().describe("Comment for every lead ({{variables}} allowed)"),
+    send_window_start: z.string().optional().describe("Start time for send window in HH:MM 24h format (e.g. '09:00')"),
+    send_window_end: z.string().optional().describe("End time for send window in HH:MM 24h format (e.g. '17:00')"),
+    send_timezone: z.string().optional().describe("IANA timezone for send window (e.g. 'Australia/Sydney'); required with a send window"),
+    send_days: z.array(z.number()).optional().describe("Days of week to send (0=Sun, 1=Mon, ..., 6=Sat)"),
+  }, async ({ leads, ...settings }) => {
+    // The API takes max 5,000 leads and ~4MB per request; later chunks with
+    // the same name append to the campaign created by the first one.
+    const MAX_LEADS = 5000;
+    const MAX_BYTES = 3 * 1024 * 1024;
+    const chunks = [];
+    let current = [];
+    let currentBytes = 0;
+    for (const lead of leads) {
+      const bytes = Buffer.byteLength(JSON.stringify(lead));
+      if (current.length > 0 && (current.length >= MAX_LEADS || currentBytes + bytes > MAX_BYTES)) {
+        chunks.push(current);
+        current = [];
+        currentBytes = 0;
+      }
+      current.push(lead);
+      currentBytes += bytes;
+    }
+    if (current.length > 0) chunks.push(current);
+
+    const summary = { campaign_name: settings.name, jobs_created: 0, skipped_count: 0, invalid_count: 0 };
+    let sent = 0;
+
+    for (const chunk of chunks) {
+      try {
+        const data = await call("POST", "/campaigns/import", { ...settings, leads: chunk });
+        summary.jobs_created += data.jobs_created || 0;
+        summary.skipped_count += data.skipped_count || 0;
+        summary.invalid_count += data.invalid_count || 0;
+        summary.accounts_used = data.accounts_used;
+        sent += chunk.length;
+      } catch (err) {
+        summary.error = err.message;
+        summary.not_sent_count = leads.length - sent;
+        break;
+      }
+    }
+
+    return { content: [{ type: "text", text: JSON.stringify(summary, null, 2) }] };
+  });
+
   server.tool("pause_campaign", "Pause or unpause a campaign.", {
     campaign_name: z.string().describe("Campaign name"),
     is_paused: z.boolean().describe("true to pause, false to unpause"),

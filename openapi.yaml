@@ -642,6 +642,39 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /campaigns/import:
+    post:
+      tags: [Campaigns]
+      summary: Launch import campaign
+      description: >-
+        Launch a campaign from your own lead list with custom data columns. Each lead's
+        custom_fields fill {{variables}} in the message, follow-ups and comment. Max 5,000
+        leads (and under 4 MB) per request; send more requests with the same name within
+        10 minutes to append. Handles already in the campaign are skipped, so retries are safe.
+      operationId: launchImportCampaign
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LaunchImportCampaignRequest'
+      responses:
+        '201':
+          description: Campaign launched
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaunchImportCampaignResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: A campaign with this name already exists
+
   /campaigns/analytics:
     get:
       tags: [Campaigns]
@@ -2077,6 +2110,98 @@ components:
         comment_template:
           type: string
           description: AI personalization template for auto-generated comments
+
+    LaunchImportCampaignRequest:
+      type: object
+      required: [name, message, leads]
+      properties:
+        name:
+          type: string
+          description: Campaign name
+        message:
+          type: string
+          description: "Message template, e.g. '{{Hey|Hi}} {{firstName}}'"
+        leads:
+          type: array
+          maxItems: 5000
+          items:
+            type: object
+            required: [twitter_handle]
+            properties:
+              twitter_handle:
+                type: string
+                description: Twitter handle, @handle, or x.com profile URL
+              custom_fields:
+                type: object
+                description: "{ columnName: value } used by {{columnName}} in templates"
+                additionalProperties: true
+              comment:
+                type: string
+                description: Comment for this lead (overrides comment_template)
+        followups:
+          type: array
+          items:
+            type: object
+            required: [wait_time, wait_unit, message]
+            properties:
+              wait_time:
+                type: number
+              wait_unit:
+                type: string
+                enum: [seconds, minutes, hours, days, weeks]
+              message:
+                type: string
+        account_ids:
+          type: array
+          description: Account IDs to send from (defaults to all active)
+          items:
+            type: string
+            format: uuid
+        enable_follow:
+          type: boolean
+          default: false
+        enable_like:
+          type: boolean
+          default: false
+        enable_comment:
+          type: boolean
+          default: false
+        comment_template:
+          type: string
+          description: Comment for every lead ({{variables}} allowed)
+        send_window_start:
+          type: string
+          description: Start time HH:MM 24h (e.g. "09:00")
+        send_window_end:
+          type: string
+          description: End time HH:MM 24h (e.g. "17:00")
+        send_timezone:
+          type: string
+          description: IANA timezone; required with a send window
+        send_days:
+          type: array
+          description: Days to send (0=Sun ... 6=Sat)
+          items:
+            type: integer
+            minimum: 0
+            maximum: 6
+
+    LaunchImportCampaignResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        campaign_name:
+          type: string
+        jobs_created:
+          type: integer
+        skipped_count:
+          type: integer
+          description: Duplicates in the request + handles already in this campaign
+        invalid_count:
+          type: integer
+        accounts_used:
+          type: integer
 
     LaunchCampaignResponse:
       type: object

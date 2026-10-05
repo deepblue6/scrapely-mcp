@@ -82,6 +82,7 @@ Any MCP-compatible client works. Just run `npx scrapely-mcp` with `SCRAPELY_API_
 | `get_scraping_source_leads` | Get leads from a scraping source |
 | `import_leads` | Import your own list of leads (handles or x.com URLs) into a new lead source |
 | `launch_campaign` | Launch a DM campaign with A/B testing, auto-follow/like/comment |
+| `launch_import_campaign` | Launch a campaign from your own lead list with custom {{variables}}, send window and days |
 | `list_campaigns` | List campaigns with stats |
 | `get_campaign_detail` | Get detailed campaign info and settings |
 | `get_campaign_analytics` | Detailed analytics: reply rates, sentiment, variant stats. Supports date range filtering. |
