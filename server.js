@@ -315,13 +315,22 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
 
   server.tool("launch_import_campaign", "Launch a DM campaign from your own lead list (e.g. a CSV) with custom data columns — same as Import Campaign in the dashboard. Each lead's custom_fields fill {{variables}} in the message, follow-ups and comment; {{Hi|Hey}} spintax is supported. Duplicate handles and handles already in the campaign are skipped. Large lists are sent in chunks automatically.", {
     name: z.string().describe("Campaign name (must not already exist)"),
-    message: z.string().describe("Message template, e.g. '{{Hey|Hi}} {{firstName}}, loved what {{company}} is doing'"),
+    message: z.string().optional().describe("Message template, e.g. '{{Hey|Hi}} {{firstName}}, loved what {{company}} is doing'. Required unless message_variants is set"),
+    message_variants: z.array(z.object({
+      message: z.string(),
+      followups: z.array(z.object({
+        wait_time: z.number(),
+        wait_unit: z.enum(["seconds", "minutes", "hours", "days", "weeks"]),
+        message: z.string(),
+        media_url: z.string().optional(),
+      })).optional(),
+    })).max(50).optional().describe("Up to 50 message templates for A/B testing; each lead gets a random one. A variant without its own followups uses the top-level followups"),
     leads: z.array(z.object({
       twitter_handle: z.string().describe("Twitter handle, @handle, or x.com profile URL"),
       custom_fields: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional().describe("{ columnName: value } used by {{columnName}} in templates"),
       comment: z.string().optional().describe("Comment for this lead (overrides comment_template)"),
     })).min(1).describe("Leads to message"),
-    followups: z.array(z.object({ wait_time: z.number(), wait_unit: z.enum(["seconds", "minutes", "hours", "days", "weeks"]), message: z.string() })).optional().describe("Follow-up templates (same {{variables}} allowed)"),
+    followups: z.array(z.object({ wait_time: z.number(), wait_unit: z.enum(["seconds", "minutes", "hours", "days", "weeks"]), message: z.string(), media_url: z.string().optional() })).optional().describe("Follow-up templates (same {{variables}} allowed); media_url attaches an image"),
     account_ids: z.array(z.string()).optional().describe("Account IDs to send from (defaults to all active)"),
     enable_follow: z.boolean().optional(),
     enable_like: z.boolean().optional(),
@@ -360,6 +369,7 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
         summary.jobs_created += data.jobs_created || 0;
         summary.skipped_count += data.skipped_count || 0;
         summary.invalid_count += data.invalid_count || 0;
+        summary.message_variants = data.message_variants;
         summary.accounts_used = data.accounts_used;
         sent += chunk.length;
       } catch (err) {
