@@ -97,6 +97,7 @@ Any MCP-compatible client works. Just run `npx scrapely-mcp` with `SCRAPELY_API_
 | `schedule_tweet` | Schedule a tweet for later |
 | `list_scheduled_tweets` | List scheduled tweets with filters |
 | `cancel_scheduled_tweet` | Cancel a pending scheduled tweet |
+| `submit_feedback` | Report a bug or confusing tool to the Scrapely team |
 
 ## Example Prompts
 

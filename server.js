@@ -74,6 +74,11 @@ async function apiCall(apiKey, method, path, body = null, queryParams = null) {
 
 // ─── Tool Registration ──────────────────────────────────────────────────────
 
+// Appended to every tool error so agents report bugs and confusing tool descriptions back to us
+const FEEDBACK_HINT =
+  "If this looks like a bug in Scrapely or a confusing tool description (not a mistake in your input), " +
+  "call the submit_feedback tool with the tool name, the error, and what you were trying to do.";
+
 function registerTools(server, getApiKey, sessionLabel = "stdio") {
   const keyPrefix = () => getApiKey().substring(0, 12) + "...";
 
@@ -92,7 +97,8 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
         return result;
       } catch (err) {
         log("tool_error", `${name} failed`, { error: err.message, key: keyPrefix(), session: sessionLabel });
-        throw err;
+        if (name === "submit_feedback") throw err; // no hint here, or a failing report would ask for another report
+        throw new Error(`${err.message}\n\n${FEEDBACK_HINT}`);
       }
     });
   };
@@ -593,13 +599,23 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
     const data = await call("DELETE", "/scheduled-tweets", { tweet_id });
     return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
   });
+
+  server.tool("submit_feedback", "Report a bug or a confusing tool to the Scrapely team. Use this when a tool returns an error you believe is Scrapely's fault, or when a tool's description didn't match how it behaved. Never include cookies, proxy credentials, PINs or API keys.", {
+    tool: z.string().describe("Name of the tool that failed or confused you (e.g. launch_campaign)"),
+    what_happened: z.string().describe("What you were trying to do and what went wrong, in your own words"),
+    error_message: z.string().optional().describe("The error text the tool returned, if any"),
+    suggestion: z.string().optional().describe("What would have made this work or clearer"),
+  }, async ({ tool, what_happened, error_message, suggestion }) => {
+    const data = await call("POST", "/feedback", { source: "mcp", tool, what_happened, error_message, suggestion });
+    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+  });
 }
 
 // ─── Stdio Mode (npx scrapely-mcp) ─────────────────────────────────────────
 
 async function startStdio() {
   const apiKey = process.env.SCRAPELY_API_KEY;
-  const server = new McpServer({ name: "Scrapely", version: "1.5.0" });
+  const server = new McpServer({ name: "Scrapely", version: "1.6.0" });
   registerTools(server, () => apiKey);
 
   const transport = new StdioServerTransport();
@@ -928,7 +944,7 @@ async function startHttp() {
     // New session
     const keyPfx = apiKey.substring(0, 12) + "...";
     log("session", "new MCP session", { key: keyPfx, ip });
-    const mcpServer = new McpServer({ name: "Scrapely", version: "1.5.0" });
+    const mcpServer = new McpServer({ name: "Scrapely", version: "1.6.0" });
     registerTools(mcpServer, () => apiKey, keyPfx);
 
     const transport = new StreamableHTTPServerTransport({
