@@ -92,6 +92,22 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
     return result;
   };
 
+  // Wrong-argument errors are raised by the SDK before our handler runs, so add the hint there too.
+  // validateToolInput is SDK-internal; if a future SDK renames it we just lose the hint on these errors.
+  if (typeof server.validateToolInput === "function") {
+    const origValidate = server.validateToolInput.bind(server);
+    server.validateToolInput = async (tool, args, toolName) => {
+      try {
+        return await origValidate(tool, args, toolName);
+      } catch (err) {
+        log("tool_error", `${toolName} invalid arguments`, { error: err.message, key: keyPrefix(), session: sessionLabel });
+        if (toolName === "submit_feedback") throw err;
+        err.message = `${err.message}\n\n${FEEDBACK_HINT}`;
+        throw err;
+      }
+    };
+  }
+
   // Wrap server.tool to auto-log every tool call
   const origTool = server.tool.bind(server);
   server.tool = (name, description, schema, handler) => {
@@ -620,7 +636,7 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
 
 async function startStdio() {
   const apiKey = process.env.SCRAPELY_API_KEY;
-  const server = new McpServer({ name: "Scrapely", version: "1.6.0" });
+  const server = new McpServer({ name: "Scrapely", version: "1.6.1" });
   registerTools(server, () => apiKey);
 
   const transport = new StdioServerTransport();
@@ -948,7 +964,7 @@ async function startHttp() {
     // New session
     const keyPfx = keyFingerprint(apiKey);
     log("session", "new MCP session", { key: keyPfx, ip });
-    const mcpServer = new McpServer({ name: "Scrapely", version: "1.6.0" });
+    const mcpServer = new McpServer({ name: "Scrapely", version: "1.6.1" });
     registerTools(mcpServer, () => apiKey, keyPfx);
 
     const transport = new StreamableHTTPServerTransport({
