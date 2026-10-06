@@ -5,7 +5,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
 import { createServer } from "node:http";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
 
 // ─── Configuration ───────────────────────────────────────────────────────────
 
@@ -23,6 +23,11 @@ function log(category, message, data = {}) {
     ...data,
   };
   console.log(JSON.stringify(entry));
+}
+
+// Never log the API key or any part of it. A short hash lets us tell keys apart in logs.
+function keyFingerprint(apiKey) {
+  return "key_" + createHash("sha256").update(apiKey).digest("hex").substring(0, 10);
 }
 
 // In stdio mode, require SCRAPELY_API_KEY upfront.
@@ -80,7 +85,7 @@ const FEEDBACK_HINT =
   "call the submit_feedback tool with the tool name, the error, and what you were trying to do.";
 
 function registerTools(server, getApiKey, sessionLabel = "stdio") {
-  const keyPrefix = () => getApiKey().substring(0, 12) + "...";
+  const keyPrefix = () => keyFingerprint(getApiKey());
 
   const call = async (method, path, body, queryParams) => {
     const result = await apiCall(getApiKey(), method, path, body, queryParams);
@@ -893,8 +898,7 @@ async function startHttp() {
       );
 
       // The access token IS the Scrapely API key
-      const tokenKeyPrefix = stored.api_key.substring(0, 12) + "...";
-      log("auth", "token exchanged", { customer_id: stored.customer_id, key: tokenKeyPrefix, ip });
+      log("auth", "token exchanged", { customer_id: stored.customer_id, key: keyFingerprint(stored.api_key), ip });
 
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({
@@ -942,7 +946,7 @@ async function startHttp() {
     }
 
     // New session
-    const keyPfx = apiKey.substring(0, 12) + "...";
+    const keyPfx = keyFingerprint(apiKey);
     log("session", "new MCP session", { key: keyPfx, ip });
     const mcpServer = new McpServer({ name: "Scrapely", version: "1.6.0" });
     registerTools(mcpServer, () => apiKey, keyPfx);
