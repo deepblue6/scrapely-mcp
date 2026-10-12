@@ -95,6 +95,10 @@ Any MCP-compatible client works. Just run `npx scrapely-mcp` with `SCRAPELY_API_
 | `enrich_twitter` | Find a person's Twitter profile from name + company |
 | `enrich_email` | Find a person's email from their Twitter handle |
 | `get_enrichment_credits` | Check enrichment credit balance |
+| `list_listeners` | List follower listeners (accounts watched for new followers/following) |
+| `add_listener` | Watch an X account for new followers and/or following (webhook events) |
+| `update_listener` | Switch followers/following on or off, or pause/resume a listener |
+| `remove_listener` | Stop watching an account and delete its listener |
 | `get_webhook_info` | Get webhook event types and payload structure docs |
 | `schedule_tweet` | Schedule a tweet for later |
 | `list_scheduled_tweets` | List scheduled tweets with filters |
@@ -116,6 +120,7 @@ Once connected to Claude, you can say things like:
 - "Find the Twitter profile for John Doe at Acme Corp"
 - "Find the email for @elonmusk"
 - "Pause DM sending on my backup account"
+- "Watch @naval for new followers and send them to my webhook"
 
 ## Self-Hosting the Remote Server
 

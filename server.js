@@ -554,12 +554,52 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
     return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
   });
 
+  // ─── FOLLOWER LISTENERS ────────────────────────────────────────────────────
+
+  server.tool("list_listeners", "List follower listeners: X accounts being watched for new followers and/or new following. Each new one is sent to your webhook as a new_follower or new_following event. Shows each listener's id, handle, what it listens to, whether it's active, last check times and last error.", {}, async () => {
+    const data = await call("GET", "/follower-listeners");
+    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+  });
+
+  server.tool("add_listener", "Start watching an X account for new followers and/or new following (same as adding a listener in the dashboard). Max 25 listeners per workspace, one per handle. New followers/following are sent to your webhook URL (set in Settings) as new_follower / new_following events.", {
+    handle: z.string().describe("X handle to watch: 'name', '@name', or an x.com profile URL"),
+    listen_followers: z.boolean().optional().describe("Send an event when this account gains a new follower (default true)"),
+    listen_following: z.boolean().optional().describe("Send an event when this account follows someone new (default true)"),
+  }, async ({ handle, listen_followers, listen_following }) => {
+    const body = { handle };
+    if (listen_followers !== undefined) body.listen_followers = listen_followers;
+    if (listen_following !== undefined) body.listen_following = listen_following;
+    const data = await call("POST", "/follower-listeners", body);
+    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+  });
+
+  server.tool("update_listener", "Change what a listener watches (followers, following or both), or pause/resume it. Get the listener id from list_listeners. Only the fields you pass are changed.", {
+    id: z.string().describe("Listener id from list_listeners"),
+    listen_followers: z.boolean().optional().describe("Watch for new followers"),
+    listen_following: z.boolean().optional().describe("Watch for new following"),
+    is_active: z.boolean().optional().describe("false to pause the listener, true to resume it"),
+  }, async ({ id, listen_followers, listen_following, is_active }) => {
+    const body = { id };
+    if (listen_followers !== undefined) body.listen_followers = listen_followers;
+    if (listen_following !== undefined) body.listen_following = listen_following;
+    if (is_active !== undefined) body.is_active = is_active;
+    const data = await call("PATCH", "/follower-listeners", body);
+    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+  });
+
+  server.tool("remove_listener", "Stop watching an X account and delete its listener. Get the listener id from list_listeners. To stop temporarily instead, use update_listener with is_active false.", {
+    id: z.string().describe("Listener id from list_listeners"),
+  }, async ({ id }) => {
+    const data = await call("DELETE", "/follower-listeners", { id });
+    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+  });
+
   // ─── WEBHOOKS ──────────────────────────────────────────────────────────────
 
   server.tool("get_webhook_info", "Get documentation for webhook events and payload structure.", {}, async () => {
     const info = {
       description: "Webhooks send real-time POST requests when events occur.",
-      events: { new_reply: "First reply from prospect.", reply_back_and_forth: "Follow-up reply.", account_paused: "Account disconnected." },
+      events: { new_reply: "First reply from prospect.", reply_back_and_forth: "Follow-up reply.", account_paused: "Account disconnected.", new_follower: "A watched account (see list_listeners) gained a new follower.", new_following: "A watched account followed someone new." },
       configuration: "Configure webhook URLs in Settings.",
     };
     return { content: [{ type: "text", text: JSON.stringify(info, null, 2) }] };
@@ -671,7 +711,7 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
 
 async function startStdio() {
   const apiKey = process.env.SCRAPELY_API_KEY;
-  const server = new McpServer({ name: "Scrapely", version: "1.8.0" });
+  const server = new McpServer({ name: "Scrapely", version: "1.9.0" });
   registerTools(server, () => apiKey);
 
   const transport = new StdioServerTransport();
@@ -999,7 +1039,7 @@ async function startHttp() {
     // New session
     const keyPfx = keyFingerprint(apiKey);
     log("session", "new MCP session", { key: keyPfx, ip });
-    const mcpServer = new McpServer({ name: "Scrapely", version: "1.8.0" });
+    const mcpServer = new McpServer({ name: "Scrapely", version: "1.9.0" });
     registerTools(mcpServer, () => apiKey, keyPfx);
 
     const transport = new StreamableHTTPServerTransport({

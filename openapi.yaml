@@ -52,6 +52,8 @@ tags:
     description: Find social profiles from name and company
   - name: Scheduled Tweets
     description: Schedule and manage automated tweets
+  - name: Follower Listeners
+    description: Watch X accounts for new followers/following (sent as new_follower / new_following webhooks)
 
 paths:
   /accounts:
@@ -1036,6 +1038,148 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '429':
           $ref: '#/components/responses/RateLimited'
+
+  /follower-listeners:
+    get:
+      tags: [Follower Listeners]
+      summary: List follower listeners
+      operationId: listFollowerListeners
+      responses:
+        '200':
+          description: Listeners for this workspace
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  listeners:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string, format: uuid }
+                        target_handle: { type: string }
+                        listen_followers: { type: boolean }
+                        listen_following: { type: boolean }
+                        is_active: { type: boolean }
+                        followers_checked_at: { type: string, format: date-time, nullable: true }
+                        following_checked_at: { type: string, format: date-time, nullable: true }
+                        last_error: { type: string, nullable: true }
+                        created_at: { type: string, format: date-time }
+                  max: { type: integer, example: 25 }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Follower Listeners]
+      summary: Add a follower listener
+      description: Watch an X account. Max 25 per workspace, one per handle.
+      operationId: createFollowerListener
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [handle]
+              properties:
+                handle: { type: string, description: "'name', '@name' or an x.com profile URL", example: naval }
+                listen_followers: { type: boolean, default: true }
+                listen_following: { type: boolean, default: true }
+      responses:
+        '201':
+          description: Listener created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  listener:
+                    type: object
+                    properties:
+                      id: { type: string, format: uuid }
+                      target_handle: { type: string }
+                      listen_followers: { type: boolean }
+                      listen_following: { type: boolean }
+                      is_active: { type: boolean }
+                      followers_checked_at: { type: string, format: date-time, nullable: true }
+                      following_checked_at: { type: string, format: date-time, nullable: true }
+                      last_error: { type: string, nullable: true }
+                      created_at: { type: string, format: date-time }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Already listening to this handle
+    patch:
+      tags: [Follower Listeners]
+      summary: Update a follower listener
+      description: Change what it watches, or pause/resume it. Only fields you send are changed.
+      operationId: updateFollowerListener
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id]
+              properties:
+                id: { type: string, format: uuid }
+                listen_followers: { type: boolean }
+                listen_following: { type: boolean }
+                is_active: { type: boolean, description: false pauses the listener }
+      responses:
+        '200':
+          description: Listener updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  listener:
+                    type: object
+                    properties:
+                      id: { type: string, format: uuid }
+                      target_handle: { type: string }
+                      listen_followers: { type: boolean }
+                      listen_following: { type: boolean }
+                      is_active: { type: boolean }
+                      followers_checked_at: { type: string, format: date-time, nullable: true }
+                      following_checked_at: { type: string, format: date-time, nullable: true }
+                      last_error: { type: string, nullable: true }
+                      created_at: { type: string, format: date-time }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Follower Listeners]
+      summary: Remove a follower listener
+      operationId: deleteFollowerListener
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id]
+              properties:
+                id: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Listener removed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /scheduled-tweets:
     get:
