@@ -84,6 +84,8 @@ const FEEDBACK_HINT =
   "If this looks like a bug in Scrapely or a confusing tool description (not a mistake in your input), " +
   "call the submit_feedback tool with the tool name, the error, and what you were trying to do.";
 
+const MEDIA_URL_HINT = "Image to attach: a media_url from upload_media (recommended), or any public image link. Outside links are downloaded when each DM sends; if one stops working, that DM goes out without the image.";
+
 function registerTools(server, getApiKey, sessionLabel = "stdio") {
   const keyPrefix = () => keyFingerprint(getApiKey());
 
@@ -314,18 +316,20 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
 
   server.tool("launch_campaign", "Launch a DM campaign targeting leads from scraping sources.", {
     name: z.string().describe("Campaign name"),
-    message: z.string().optional().describe("Message text (supports {{firstName}})"),
+    message: z.string().optional().describe("Message text (supports {{firstName}}). To attach an image to the first DM, use message_variants with media_url instead"),
     message_variants: z.array(z.object({
       message: z.string(),
+      media_url: z.string().optional().describe(MEDIA_URL_HINT),
       followups: z.array(z.object({
         wait_time: z.number(),
         wait_unit: z.enum(["seconds", "minutes", "hours", "days", "weeks"]),
         message: z.string(),
+        media_url: z.string().optional().describe(MEDIA_URL_HINT),
       })).max(25).optional().describe("Up to 25 follow-ups for this variant"),
     })).max(50).optional().describe("Message variants for A/B testing (max 50)"),
     lead_source_ids: z.array(z.string()).describe("Lead source IDs to target"),
     account_ids: z.array(z.string()).optional().describe("Account IDs to send from"),
-    followups: z.array(z.object({ wait_time: z.number(), wait_unit: z.enum(["seconds", "minutes", "hours", "days", "weeks"]), message: z.string() })).max(25).optional().describe("Up to 25 follow-ups"),
+    followups: z.array(z.object({ wait_time: z.number(), wait_unit: z.enum(["seconds", "minutes", "hours", "days", "weeks"]), message: z.string(), media_url: z.string().optional().describe(MEDIA_URL_HINT) })).max(25).optional().describe("Up to 25 follow-ups"),
     max_leads: z.number().optional().describe("Max leads to target (max 25,000)"),
     enable_follow: z.boolean().optional(),
     enable_like: z.boolean().optional(),
@@ -345,11 +349,12 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
     message: z.string().optional().describe("Message template, e.g. '{{Hey|Hi}} {{firstName}}, loved what {{company}} is doing'. Required unless message_variants is set"),
     message_variants: z.array(z.object({
       message: z.string(),
+      media_url: z.string().optional().describe(MEDIA_URL_HINT),
       followups: z.array(z.object({
         wait_time: z.number(),
         wait_unit: z.enum(["seconds", "minutes", "hours", "days", "weeks"]),
         message: z.string(),
-        media_url: z.string().optional(),
+        media_url: z.string().optional().describe(MEDIA_URL_HINT),
       })).max(25).optional().describe("Up to 25 follow-ups for this variant"),
     })).max(50).optional().describe("Up to 50 message templates for A/B testing; each lead gets a random one. A variant without its own followups uses the top-level followups"),
     leads: z.array(z.object({
@@ -357,7 +362,7 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
       custom_fields: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional().describe("{ columnName: value } used by {{columnName}} in templates"),
       comment: z.string().optional().describe("Comment for this lead (overrides comment_template)"),
     })).min(1).describe("Leads to message"),
-    followups: z.array(z.object({ wait_time: z.number(), wait_unit: z.enum(["seconds", "minutes", "hours", "days", "weeks"]), message: z.string(), media_url: z.string().optional() })).max(25).optional().describe("Up to 25 follow-up templates (same {{variables}} allowed); media_url attaches an image"),
+    followups: z.array(z.object({ wait_time: z.number(), wait_unit: z.enum(["seconds", "minutes", "hours", "days", "weeks"]), message: z.string(), media_url: z.string().optional().describe(MEDIA_URL_HINT) })).max(25).optional().describe("Up to 25 follow-up templates (same {{variables}} allowed)"),
     account_ids: z.array(z.string()).optional().describe("Account IDs to send from (defaults to all active)"),
     enable_follow: z.boolean().optional(),
     enable_like: z.boolean().optional(),
@@ -417,6 +422,26 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
     return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
   });
 
+  // file_path only on the local (npx) server: the hosted server must never read its own files
+  const uploadMediaInput = {
+    url: z.string().optional().describe("Public link to an image; Scrapely downloads and stores a copy"),
+    base64: z.string().optional().describe("Base64-encoded image (max ~3MB before encoding)"),
+    ...(HTTP_MODE ? {} : { file_path: z.string().optional().describe("Path to an image file on this computer") }),
+  };
+  server.tool("upload_media", `Upload an image to attach to campaign DMs or follow-ups. Pass exactly one of url, base64${HTTP_MODE ? "" : " or file_path"}. Returns a media_url: put it on a message variant (image on the first DM) or a follow-up in launch_campaign, launch_import_campaign or edit_campaign. JPEG, PNG, GIF or WebP, up to 5MB.`, uploadMediaInput, async ({ url, base64, file_path }) => {
+    const given = [url, base64, file_path].filter(Boolean).length;
+    if (given !== 1) {
+      throw new Error(`Pass exactly one of url, base64${HTTP_MODE ? "" : " or file_path"}`);
+    }
+    let body = url ? { url } : { data: base64 };
+    if (file_path) {
+      const { readFile } = await import("node:fs/promises");
+      body = { data: (await readFile(file_path)).toString("base64") };
+    }
+    const data = await call("POST", "/media/upload", body);
+    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+  });
+
   server.tool("rename_campaign", "Rename a campaign. Its DMs, follow-ups, stats and paused state carry over. Use the new name in every later call — the old name stops working.", {
     campaign_name: z.string().describe("Current campaign name"),
     new_name: z.string().describe("New name, 1-200 characters. Can't match another of the user's campaigns, including deleted ones."),
@@ -429,13 +454,15 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
     campaign_name: z.string().describe("Campaign name"),
     message_variants: z.array(z.object({
       message: z.string(),
+      media_url: z.string().optional().describe(MEDIA_URL_HINT),
       followups: z.array(z.object({
         wait_time: z.number(),
         wait_unit: z.enum(["seconds", "minutes", "hours", "days", "weeks"]),
         message: z.string(),
+        media_url: z.string().optional().describe(MEDIA_URL_HINT),
       })).max(25).optional().describe("Up to 25 follow-ups for this variant"),
     })).optional().describe("Updated message variants"),
-    followups: z.array(z.object({ wait_time: z.number(), wait_unit: z.enum(["seconds", "minutes", "hours", "days", "weeks"]), message: z.string() })).max(25).optional().describe("Up to 25 follow-ups"),
+    followups: z.array(z.object({ wait_time: z.number(), wait_unit: z.enum(["seconds", "minutes", "hours", "days", "weeks"]), message: z.string(), media_url: z.string().optional().describe(MEDIA_URL_HINT) })).max(25).optional().describe("Up to 25 follow-ups"),
     enable_follow: z.boolean().optional(),
     enable_like: z.boolean().optional(),
     enable_comment: z.boolean().optional(),
@@ -644,7 +671,7 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
 
 async function startStdio() {
   const apiKey = process.env.SCRAPELY_API_KEY;
-  const server = new McpServer({ name: "Scrapely", version: "1.7.0" });
+  const server = new McpServer({ name: "Scrapely", version: "1.8.0" });
   registerTools(server, () => apiKey);
 
   const transport = new StdioServerTransport();
@@ -972,7 +999,7 @@ async function startHttp() {
     // New session
     const keyPfx = keyFingerprint(apiKey);
     log("session", "new MCP session", { key: keyPfx, ip });
-    const mcpServer = new McpServer({ name: "Scrapely", version: "1.7.0" });
+    const mcpServer = new McpServer({ name: "Scrapely", version: "1.8.0" });
     registerTools(mcpServer, () => apiKey, keyPfx);
 
     const transport = new StreamableHTTPServerTransport({
