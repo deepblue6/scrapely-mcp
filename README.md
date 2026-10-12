@@ -85,6 +85,7 @@ Any MCP-compatible client works. Just run `npx scrapely-mcp` with `SCRAPELY_API_
 | `launch_import_campaign` | Launch a campaign from your own lead list with custom {{variables}}, send window and days |
 | `list_campaigns` | List campaigns with stats |
 | `get_campaign_detail` | Get detailed campaign info and settings |
+| `rename_campaign` | Rename a campaign (DMs, stats and pause state carry over) |
 | `get_campaign_analytics` | Detailed analytics: reply rates, sentiment, variant stats. Supports date range filtering. |
 | `fetch_conversations` | Fetch conversations with optional message history |
 | `send_dm` | Send a DM to an existing conversation |

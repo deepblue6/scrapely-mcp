@@ -417,6 +417,14 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
     return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
   });
 
+  server.tool("rename_campaign", "Rename a campaign. Its DMs, follow-ups, stats and paused state carry over. Use the new name in every later call — the old name stops working.", {
+    campaign_name: z.string().describe("Current campaign name"),
+    new_name: z.string().describe("New name, 1-200 characters. Can't match another of the user's campaigns, including deleted ones."),
+  }, async (args) => {
+    const data = await call("POST", "/campaigns/rename", { ...args });
+    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+  });
+
   server.tool("edit_campaign", "Edit settings for an existing campaign — message variants, followups, engagement actions, send window/days.", {
     campaign_name: z.string().describe("Campaign name"),
     message_variants: z.array(z.object({
@@ -636,7 +644,7 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
 
 async function startStdio() {
   const apiKey = process.env.SCRAPELY_API_KEY;
-  const server = new McpServer({ name: "Scrapely", version: "1.6.1" });
+  const server = new McpServer({ name: "Scrapely", version: "1.7.0" });
   registerTools(server, () => apiKey);
 
   const transport = new StdioServerTransport();
@@ -964,7 +972,7 @@ async function startHttp() {
     // New session
     const keyPfx = keyFingerprint(apiKey);
     log("session", "new MCP session", { key: keyPfx, ip });
-    const mcpServer = new McpServer({ name: "Scrapely", version: "1.6.1" });
+    const mcpServer = new McpServer({ name: "Scrapely", version: "1.7.0" });
     registerTools(mcpServer, () => apiKey, keyPfx);
 
     const transport = new StreamableHTTPServerTransport({
