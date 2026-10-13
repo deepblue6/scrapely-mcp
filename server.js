@@ -428,6 +428,18 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
     base64: z.string().optional().describe("Base64-encoded image (max ~3MB before encoding)"),
     ...(HTTP_MODE ? {} : { file_path: z.string().optional().describe("Path to an image file on this computer") }),
   };
+  server.tool("get_campaign_leads", "List the leads in a campaign with their status, sending account, reply info and custom_fields (the columns from an import campaign, e.g. a personalized link). Paginated, oldest first.", {
+    campaign_name: z.string().describe("Campaign name"),
+    status: z.string().optional().describe("Only leads with this status, e.g. pending, completed, dms_closed"),
+    replied: z.boolean().optional().describe("Only leads who replied (true) or didn't (false)"),
+    handle: z.string().optional().describe("One lead by X handle (case-insensitive)"),
+    limit: z.number().optional().describe("Max leads to return (default 100, max 1000)"),
+    offset: z.number().optional().describe("Pagination offset"),
+  }, async ({ campaign_name, ...params }) => {
+    const data = await call("GET", `/campaigns/${encodeURIComponent(campaign_name)}/leads`, null, params);
+    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+  });
+
   server.tool("add_leads_to_campaign", "Add leads to an existing campaign by X handle (same as adding leads in the dashboard). They get the campaign's messages, variants, follow-ups and engagement settings, spread across its active accounts. Handles already in the campaign are skipped. No limit on list size: large lists are sent in 5,000-handle chunks automatically.", {
     campaign_name: z.string().describe("Name of the existing campaign"),
     twitter_handles: z.array(z.string()).min(1).describe("Handles to add: 'name' or '@name'"),
@@ -759,7 +771,7 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
 
 async function startStdio() {
   const apiKey = process.env.SCRAPELY_API_KEY;
-  const server = new McpServer({ name: "Scrapely", version: "1.11.0" });
+  const server = new McpServer({ name: "Scrapely", version: "1.12.0" });
   registerTools(server, () => apiKey);
 
   const transport = new StdioServerTransport();
@@ -1087,7 +1099,7 @@ async function startHttp() {
     // New session
     const keyPfx = keyFingerprint(apiKey);
     log("session", "new MCP session", { key: keyPfx, ip });
-    const mcpServer = new McpServer({ name: "Scrapely", version: "1.11.0" });
+    const mcpServer = new McpServer({ name: "Scrapely", version: "1.12.0" });
     registerTools(mcpServer, () => apiKey, keyPfx);
 
     const transport = new StreamableHTTPServerTransport({
