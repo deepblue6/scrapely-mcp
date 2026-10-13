@@ -98,6 +98,7 @@ Any MCP-compatible client works. Just run `npx scrapely-mcp` with `SCRAPELY_API_
 | `list_listeners` | List follower listeners (accounts watched for new followers/following) |
 | `add_listener` | Watch an X account for new followers and/or following (webhook events) |
 | `update_listener` | Switch followers/following on or off, or pause/resume a listener |
+| `get_listener_events` | Query detected new followers/following with filters (watched handle, type, date range, handle, keyword, follower count, verified) |
 | `remove_listener` | Stop watching an account and delete its listener |
 | `get_webhook_info` | Get webhook event types and payload structure docs |
 | `schedule_tweet` | Schedule a tweet for later |

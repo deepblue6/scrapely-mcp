@@ -587,6 +587,24 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
     return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
   });
 
+  server.tool("get_listener_events", "Query the new followers / new following your follower listeners have detected, newest first — including any you missed in your webhook. Each event has the watched handle, when it was detected, and the person's full profile (handle, name, bio, location, website, follower/following counts, verified). All filters are optional.", {
+    listener_id: z.string().optional().describe("Only events from this listener (id from list_listeners)"),
+    target_handle: z.string().optional().describe("Only events for this watched account"),
+    type: z.enum(["followers", "following"]).optional().describe("followers = new_follower events, following = new_following events"),
+    since: z.string().optional().describe("Only events detected on/after this ISO date or datetime, e.g. 2026-10-12"),
+    until: z.string().optional().describe("Only events detected on/before this ISO date or datetime"),
+    handle: z.string().optional().describe("The person's X handle (exact match, case-insensitive)"),
+    search: z.string().optional().describe("Keyword in the person's name, handle or bio"),
+    min_followers: z.number().optional().describe("Person has at least this many followers"),
+    max_followers: z.number().optional().describe("Person has at most this many followers"),
+    verified: z.boolean().optional().describe("Only verified (true) or unverified (false) people"),
+    limit: z.number().optional().describe("Max events to return (default 50, max 500)"),
+    offset: z.number().optional().describe("Pagination offset"),
+  }, async (params) => {
+    const data = await call("GET", "/follower-listeners/events", null, params);
+    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+  });
+
   server.tool("remove_listener", "Stop watching an X account and delete its listener. Get the listener id from list_listeners. To stop temporarily instead, use update_listener with is_active false.", {
     id: z.string().describe("Listener id from list_listeners"),
   }, async ({ id }) => {
@@ -711,7 +729,7 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
 
 async function startStdio() {
   const apiKey = process.env.SCRAPELY_API_KEY;
-  const server = new McpServer({ name: "Scrapely", version: "1.9.0" });
+  const server = new McpServer({ name: "Scrapely", version: "1.10.0" });
   registerTools(server, () => apiKey);
 
   const transport = new StdioServerTransport();
@@ -1039,7 +1057,7 @@ async function startHttp() {
     // New session
     const keyPfx = keyFingerprint(apiKey);
     log("session", "new MCP session", { key: keyPfx, ip });
-    const mcpServer = new McpServer({ name: "Scrapely", version: "1.9.0" });
+    const mcpServer = new McpServer({ name: "Scrapely", version: "1.10.0" });
     registerTools(mcpServer, () => apiKey, keyPfx);
 
     const transport = new StreamableHTTPServerTransport({

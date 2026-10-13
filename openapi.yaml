@@ -1181,6 +1181,107 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /follower-listeners/events:
+    get:
+      tags: [Follower Listeners]
+      summary: Query listener events
+      description: New followers / following detected by your follower listeners, newest first. Includes events whose webhook failed.
+      operationId: listFollowerListenerEvents
+      parameters:
+        - name: listener_id
+          in: query
+          description: Only events from this listener
+          schema: { type: string, format: uuid }
+        - name: target_handle
+          in: query
+          description: Only events for this watched account
+          schema: { type: string }
+        - name: type
+          in: query
+          description: followers (new_follower) or following (new_following)
+          schema: { type: string, enum: [followers, following] }
+        - name: since
+          in: query
+          description: Detected on/after this ISO date or datetime
+          schema: { type: string }
+        - name: until
+          in: query
+          description: Detected on/before this ISO date or datetime
+          schema: { type: string }
+        - name: handle
+          in: query
+          description: The person's X handle (exact, case-insensitive)
+          schema: { type: string }
+        - name: search
+          in: query
+          description: Keyword in the person's name, handle or bio
+          schema: { type: string }
+        - name: min_followers
+          in: query
+          description: Person has at least this many followers
+          schema: { type: integer }
+        - name: max_followers
+          in: query
+          description: Person has at most this many followers
+          schema: { type: integer }
+        - name: verified
+          in: query
+          description: Only verified (true) or unverified (false) people
+          schema: { type: boolean }
+        - name: limit
+          in: query
+          description: Max events (default 50, max 500)
+          schema: { type: integer, default: 50, maximum: 500 }
+        - name: offset
+          in: query
+          description: Pagination offset
+          schema: { type: integer, default: 0 }
+      responses:
+        '200':
+          description: Matching events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer }
+                        event: { type: string, enum: [new_follower, new_following] }
+                        detected_at: { type: string, format: date-time }
+                        listener_id: { type: string, format: uuid, nullable: true }
+                        target_handle: { type: string }
+                        target_url: { type: string }
+                        user:
+                          type: object
+                          properties:
+                            id: { type: string }
+                            screen_name: { type: string }
+                            name: { type: string }
+                            description: { type: string }
+                            location: { type: string }
+                            website: { type: string, nullable: true }
+                            followers_count: { type: integer }
+                            following_count: { type: integer }
+                            verified: { type: boolean }
+                            profile_image_url: { type: string, nullable: true }
+                            created_at: { type: string, format: date-time, nullable: true }
+                            profile_url: { type: string }
+                  pagination:
+                    type: object
+                    properties:
+                      total: { type: integer }
+                      limit: { type: integer }
+                      offset: { type: integer }
+                      has_more: { type: boolean }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /scheduled-tweets:
     get:
       tags: [Scheduled Tweets]
