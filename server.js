@@ -440,29 +440,49 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
     return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
   });
 
-  server.tool("add_leads_to_campaign", "Add leads to an existing campaign by X handle (same as adding leads in the dashboard). They get the campaign's messages, variants, follow-ups and engagement settings, spread across its active accounts. Handles already in the campaign are skipped. No limit on list size: large lists are sent in 5,000-handle chunks automatically.", {
+  server.tool("add_leads_to_campaign", "Add leads to an existing campaign (same as adding leads in the dashboard). They get the campaign's messages, variants, images, follow-ups, engagement settings and send window, spread across its active accounts. Handles already in the campaign are skipped. Pass either twitter_handles, or leads with custom_fields: for an import campaign, custom_fields fill the {{columns}} its messages use — leads added without them get a warning in the response. No limit on list size: large lists are sent in 5,000-lead chunks automatically.", {
     campaign_name: z.string().describe("Name of the existing campaign"),
-    twitter_handles: z.array(z.string()).min(1).describe("Handles to add: 'name' or '@name'"),
-  }, async ({ campaign_name, twitter_handles }) => {
+    twitter_handles: z.array(z.string()).optional().describe("Handles to add: 'name' or '@name'"),
+    leads: z.array(z.object({
+      twitter_handle: z.string().describe("Handle: 'name' or '@name'"),
+      custom_fields: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional().describe("Values for the campaign's {{columns}}, e.g. { first_name: 'Jane', company: 'Acme' }"),
+      comment: z.string().optional().describe("This lead's comment, for import campaigns that comment per lead"),
+    })).optional().describe("Leads with their own custom_fields (use instead of twitter_handles for import campaigns)"),
+  }, async ({ campaign_name, twitter_handles, leads }) => {
+    const items = leads?.length ? leads : (twitter_handles || []);
+    if (items.length === 0) throw new Error("Pass twitter_handles or leads");
     const CHUNK_SIZE = 5000;
     const summary = { campaign_name, jobs_created: 0, duplicates_skipped: 0 };
+    const warnings = new Set();
+    const missingColumns = new Set();
+    let leadsMissingColumns = 0;
 
-    for (let i = 0; i < twitter_handles.length; i += CHUNK_SIZE) {
+    for (let i = 0; i < items.length; i += CHUNK_SIZE) {
+      const chunk = items.slice(i, i + CHUNK_SIZE);
       try {
-        const data = await call("POST", "/campaigns/add-lead", { campaign_name, twitter_handles: twitter_handles.slice(i, i + CHUNK_SIZE) });
+        const body = leads?.length ? { campaign_name, leads: chunk } : { campaign_name, twitter_handles: chunk };
+        const data = await call("POST", "/campaigns/add-lead", body);
         summary.jobs_created += data.jobs_created || 0;
         summary.duplicates_skipped += data.duplicates_skipped || 0;
+        (data.warnings || []).forEach((w) => warnings.add(w));
+        (data.missing_columns || []).forEach((c) => missingColumns.add(c));
+        leadsMissingColumns += data.leads_missing_columns || 0;
       } catch (err) {
         summary.error = err.message;
-        summary.not_sent_count = twitter_handles.length - i;
+        summary.not_sent_count = items.length - i;
         break;
       }
     }
 
+    if (warnings.size) {
+      summary.warnings = [...warnings];
+      summary.missing_columns = [...missingColumns];
+      summary.leads_missing_columns = leadsMissingColumns;
+    }
     return { content: [{ type: "text", text: JSON.stringify(summary, null, 2) }] };
   });
 
-  server.tool("add_lead_source_to_campaign", "Add every lead from a lead source (a scrape or import) to an existing campaign, same as Add to Campaign in the dashboard. Leads already in the campaign are skipped. Get lead source ids from check_scraping_status.", {
+  server.tool("add_lead_source_to_campaign", "Add every lead from a lead source (a scrape or import) to an existing campaign, same as Add to Campaign in the dashboard. They get the campaign's settings, including its send window. Leads already in the campaign are skipped. Lead sources have no custom_fields, so adding one to an import campaign that uses {{columns}} returns a warning. Get lead source ids from check_scraping_status.", {
     campaign_name: z.string().describe("Name of the existing campaign"),
     lead_source_id: z.string().describe("Lead source UUID"),
   }, async ({ campaign_name, lead_source_id }) => {
@@ -771,7 +791,7 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
 
 async function startStdio() {
   const apiKey = process.env.SCRAPELY_API_KEY;
-  const server = new McpServer({ name: "Scrapely", version: "1.12.0" });
+  const server = new McpServer({ name: "Scrapely", version: "1.13.0" });
   registerTools(server, () => apiKey);
 
   const transport = new StdioServerTransport();
@@ -1099,7 +1119,7 @@ async function startHttp() {
     // New session
     const keyPfx = keyFingerprint(apiKey);
     log("session", "new MCP session", { key: keyPfx, ip });
-    const mcpServer = new McpServer({ name: "Scrapely", version: "1.12.0" });
+    const mcpServer = new McpServer({ name: "Scrapely", version: "1.13.0" });
     registerTools(mcpServer, () => apiKey, keyPfx);
 
     const transport = new StreamableHTTPServerTransport({
