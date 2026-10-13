@@ -73,6 +73,7 @@ Any MCP-compatible client works. Just run `npx scrapely-mcp` with `SCRAPELY_API_
 | `update_proxy` | Update proxy settings for an account |
 | `toggle_pause` | Pause/unpause DM sending |
 | `toggle_followups_pause` | Pause/unpause follow-up messages |
+| `update_handle` | Update an account's stored handle after renaming it on X |
 | `toggle_warmup` | Enable/disable warmup mode |
 | `get_account_tags` | Get tags for accounts |
 | `set_account_tags` | Replace all tags for an account |
@@ -83,12 +84,14 @@ Any MCP-compatible client works. Just run `npx scrapely-mcp` with `SCRAPELY_API_
 | `import_leads` | Import your own list of leads (handles or x.com URLs) into a new lead source |
 | `launch_campaign` | Launch a DM campaign with A/B testing, auto-follow/like/comment |
 | `launch_import_campaign` | Launch a campaign from your own lead list with custom {{variables}}, send window and days |
+| `pause_campaign` | Pause or unpause a campaign |
 | `list_campaigns` | List campaigns with stats |
 | `get_campaign_detail` | Get detailed campaign info and settings |
 | `get_campaign_leads` | List a campaign's leads with status, reply info and custom_fields |
 | `add_leads_to_campaign` | Add leads to a campaign by handle (any number; large lists are chunked automatically) |
 | `add_lead_source_to_campaign` | Add every lead from a lead source to a campaign |
 | `rename_campaign` | Rename a campaign (DMs, stats and pause state carry over) |
+| `edit_campaign` | Edit a campaign's messages, follow-ups, engagement actions and send window |
 | `upload_media` | Upload an image (link, base64, or local file with `npx`) to attach to campaign DMs and follow-ups |
 | `get_campaign_analytics` | Detailed analytics: reply rates, sentiment, variant stats. Supports date range filtering. |
 | `fetch_conversations` | Fetch conversations with optional message history |
@@ -98,6 +101,9 @@ Any MCP-compatible client works. Just run `npx scrapely-mcp` with `SCRAPELY_API_
 | `enrich_twitter` | Find a person's Twitter profile from name + company |
 | `enrich_email` | Find a person's email from their Twitter handle |
 | `get_enrichment_credits` | Check enrichment credit balance |
+| `search_people` | Search the People database of X profiles by bio, location, follower counts and more |
+| `get_people_credits` | Check your People search credit balance |
+| `get_people_schema` | Get the People database columns and types |
 | `list_listeners` | List follower listeners (accounts watched for new followers/following) |
 | `add_listener` | Watch an X account for new followers and/or following (webhook events) |
 | `update_listener` | Switch followers/following on or off, or pause/resume a listener |
