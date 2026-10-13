@@ -11,7 +11,7 @@ info:
     - `Authorization: Bearer sk_live_your_api_key`
 
     ## Rate Limits
-    - 60 requests per minute per API key
+    - 120 requests per minute per API key
     - Rate limit headers included in all responses
 
     ## Request IDs
@@ -1472,12 +1472,12 @@ components:
       description: Requests allowed per minute
       schema:
         type: integer
-        example: 60
+        example: 120
     X-RateLimit-Remaining:
       description: Requests remaining in current window
       schema:
         type: integer
-        example: 45
+        example: 105
     X-RateLimit-Reset:
       description: Unix timestamp when the rate limit resets
       schema:
