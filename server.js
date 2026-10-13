@@ -428,6 +428,36 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
     base64: z.string().optional().describe("Base64-encoded image (max ~3MB before encoding)"),
     ...(HTTP_MODE ? {} : { file_path: z.string().optional().describe("Path to an image file on this computer") }),
   };
+  server.tool("add_leads_to_campaign", "Add leads to an existing campaign by X handle (same as adding leads in the dashboard). They get the campaign's messages, variants, follow-ups and engagement settings, spread across its active accounts. Handles already in the campaign are skipped. No limit on list size: large lists are sent in 5,000-handle chunks automatically.", {
+    campaign_name: z.string().describe("Name of the existing campaign"),
+    twitter_handles: z.array(z.string()).min(1).describe("Handles to add: 'name' or '@name'"),
+  }, async ({ campaign_name, twitter_handles }) => {
+    const CHUNK_SIZE = 5000;
+    const summary = { campaign_name, jobs_created: 0, duplicates_skipped: 0 };
+
+    for (let i = 0; i < twitter_handles.length; i += CHUNK_SIZE) {
+      try {
+        const data = await call("POST", "/campaigns/add-lead", { campaign_name, twitter_handles: twitter_handles.slice(i, i + CHUNK_SIZE) });
+        summary.jobs_created += data.jobs_created || 0;
+        summary.duplicates_skipped += data.duplicates_skipped || 0;
+      } catch (err) {
+        summary.error = err.message;
+        summary.not_sent_count = twitter_handles.length - i;
+        break;
+      }
+    }
+
+    return { content: [{ type: "text", text: JSON.stringify(summary, null, 2) }] };
+  });
+
+  server.tool("add_lead_source_to_campaign", "Add every lead from a lead source (a scrape or import) to an existing campaign, same as Add to Campaign in the dashboard. Leads already in the campaign are skipped. Get lead source ids from check_scraping_status.", {
+    campaign_name: z.string().describe("Name of the existing campaign"),
+    lead_source_id: z.string().describe("Lead source UUID"),
+  }, async ({ campaign_name, lead_source_id }) => {
+    const data = await call("POST", "/campaigns/add-lead-source", { campaign_name, lead_source_id });
+    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+  });
+
   server.tool("upload_media", `Upload an image to attach to campaign DMs or follow-ups. Pass exactly one of url, base64${HTTP_MODE ? "" : " or file_path"}. Returns a media_url: put it on a message variant (image on the first DM) or a follow-up in launch_campaign, launch_import_campaign or edit_campaign. JPEG, PNG, GIF or WebP, up to 5MB.`, uploadMediaInput, async ({ url, base64, file_path }) => {
     const given = [url, base64, file_path].filter(Boolean).length;
     if (given !== 1) {
@@ -729,7 +759,7 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
 
 async function startStdio() {
   const apiKey = process.env.SCRAPELY_API_KEY;
-  const server = new McpServer({ name: "Scrapely", version: "1.10.0" });
+  const server = new McpServer({ name: "Scrapely", version: "1.11.0" });
   registerTools(server, () => apiKey);
 
   const transport = new StdioServerTransport();
@@ -1057,7 +1087,7 @@ async function startHttp() {
     // New session
     const keyPfx = keyFingerprint(apiKey);
     log("session", "new MCP session", { key: keyPfx, ip });
-    const mcpServer = new McpServer({ name: "Scrapely", version: "1.10.0" });
+    const mcpServer = new McpServer({ name: "Scrapely", version: "1.11.0" });
     registerTools(mcpServer, () => apiKey, keyPfx);
 
     const transport = new StreamableHTTPServerTransport({
