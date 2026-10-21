@@ -430,7 +430,7 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
   };
   server.tool("get_campaign_leads", "List the leads in a campaign with their status, sending account, reply info and custom_fields (the columns from an import campaign, e.g. a personalized link). Paginated, oldest first.", {
     campaign_name: z.string().describe("Campaign name"),
-    status: z.string().optional().describe("Only leads with this status, e.g. pending, completed, dms_closed"),
+    status: z.string().optional().describe("Only leads with this status: pending, completed, dms_closed, already_contacted, blocklisted, needs_verified_sender (recipient only accepts DMs from verified accounts), failed"),
     replied: z.boolean().optional().describe("Only leads who replied (true) or didn't (false)"),
     handle: z.string().optional().describe("One lead by X handle (case-insensitive)"),
     limit: z.number().optional().describe("Max leads to return (default 100, max 1000)"),
