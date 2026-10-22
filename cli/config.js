@@ -6,7 +6,7 @@
 //   Windows:     %APPDATA%\scrapely\config.json
 // The file is readable only by the current user (0600, folder 0700).
 
-import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -26,13 +26,21 @@ export function readConfig() {
   }
 }
 
+// Writes a new 0600 file next to the target, then renames it into place,
+// so the key is never in a file that others can read, even for a moment.
+function writePrivate(file, data) {
+  const tmp = `${file}.${process.pid}.tmp`;
+  rmSync(tmp, { force: true }); // left over from a crash
+  writeFileSync(tmp, JSON.stringify(data, null, 2) + "\n", { mode: 0o600, flag: "wx" });
+  renameSync(tmp, file);
+}
+
 export function saveApiKey(apiKey) {
   const file = configPath();
   const dir = dirname(file);
   mkdirSync(dir, { recursive: true, mode: 0o700 });
   chmodSync(dir, 0o700);
-  writeFileSync(file, JSON.stringify({ ...readConfig(), api_key: apiKey }, null, 2) + "\n", { mode: 0o600 });
-  chmodSync(file, 0o600); // mode above only applies when the file is new
+  writePrivate(file, { ...readConfig(), api_key: apiKey });
   return file;
 }
 
@@ -42,7 +50,7 @@ export function removeApiKey() {
   if (!existsSync(file)) return false;
   const { api_key, ...rest } = readConfig();
   if (Object.keys(rest).length === 0) rmSync(file);
-  else writeFileSync(file, JSON.stringify(rest, null, 2) + "\n", { mode: 0o600 });
+  else writePrivate(file, rest);
   return Boolean(api_key);
 }
 

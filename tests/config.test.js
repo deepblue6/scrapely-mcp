@@ -1,6 +1,6 @@
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import { statSync } from "node:fs";
+import { chmodSync, mkdirSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { configPath, maskKey, removeApiKey, resolveApiKey, saveApiKey } from "../cli/config.js";
 import { tempHome } from "./helpers/run-cli.js";
@@ -41,4 +41,16 @@ test("logout removes the key", () => {
 test("keys are masked, never shown in full", () => {
   assert.equal(maskKey("sk_live_1234567890abcd"), "sk_live_…abcd");
   assert.equal(maskKey("short"), "****");
+});
+
+test("an existing world-readable config is replaced by a private one", { skip: process.platform === "win32" }, () => {
+  const dir = join(home, "xdg", "scrapely");
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, "config.json"), JSON.stringify({ other: 1 }), { mode: 0o644 });
+  chmodSync(join(dir, "config.json"), 0o644);
+  const file = saveApiKey("sk_live_abcdefghijklmnop");
+  assert.equal(statSync(file).mode & 0o777, 0o600);
+  assert.deepEqual(readdirSync(dir), ["config.json"], "no temp file left behind");
+  assert.equal(removeApiKey(), true);
+  assert.equal(statSync(file).mode & 0o777, 0o600, "other settings stay private too");
 });

@@ -200,8 +200,9 @@ export function loginHelp() {
     "",
     "Usage",
     "  scrapely login             Paste your key when asked (it stays hidden)",
-    "  scrapely login --key <key> Pass the key directly",
     "  echo $KEY | scrapely login Read the key from stdin",
+    "  scrapely login --key <key> Pass the key directly (less safe: it stays in",
+    "                             your shell history and shows up in ps)",
     "",
     "Create a key at https://app.scrapely.co/settings/integrations",
   ].join("\n");

@@ -9,7 +9,10 @@ import { colors } from "./style.js";
 export const KEYS_URL = "https://app.scrapely.co/settings/integrations";
 
 async function readKey(flagKey) {
-  if (flagKey) return flagKey.trim();
+  if (flagKey) {
+    if (isInteractive()) process.stderr.write("Tip: --key leaves the key in your shell history. Next time, run scrapely login and paste it.\n");
+    return flagKey.trim();
+  }
   if (!isInteractive()) return (await readStdin()).trim();
   process.stderr.write(`Create an API key at ${KEYS_URL}\n`);
   return askHidden("Paste your API key (input is hidden): ");
