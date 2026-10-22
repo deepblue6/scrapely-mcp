@@ -109,6 +109,21 @@ scrapely profiles remove bitvault
 
 The key used is, first match wins: `--profile`, `SCRAPELY_API_KEY`, `SCRAPELY_PROFILE` (a profile name), the default profile, then the profile named `default`. Commands that change things show the profile in their "Continue?" question, so you always know which workspace you're about to change.
 
+### Use with AI agents (Claude Code, Codex, Cursor)
+
+One command teaches your coding agent to use the CLI, with nothing to copy and paste:
+
+```bash
+scrapely setup-agent
+```
+
+It writes a Claude Code skill to `~/.claude/skills/scrapely/SKILL.md` and a Scrapely section to `./AGENTS.md` (read by Codex, Cursor and many other agents), after showing you the files and asking first. In `AGENTS.md` it only touches the block between `<!-- scrapely:start -->` and `<!-- scrapely:end -->`, so running it again (for example after upgrading) updates that block and leaves the rest of the file alone.
+
+- `--claude` or `--agents-md` writes just one of them; `--project` puts the skill in this project's `.claude/skills` instead of your home folder.
+- `--print` shows the instructions without writing anything.
+
+The instructions tell your agent to check `scrapely whoami` first, to ask you to run `scrapely login` yourself (never to paste a key into the chat), to use `--json`, and to get your explicit OK before anything that sends, spends, launches, pauses or deletes. For agencies, they tell it to pick the workspace with `--profile <name>` and always say which profile it used. Then try asking your agent: "show me my Scrapely campaigns".
+
 ### Your first 5 minutes
 
 ```bash
