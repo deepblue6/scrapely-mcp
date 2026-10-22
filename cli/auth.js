@@ -3,6 +3,7 @@
 import { API_BASE, ApiError, DEFAULT_API_BASE, apiCall } from "../api.js";
 import { loadConfig, maskKey, missingProfile, profileNames, removeApiKey, resolveApiKey, saveApiKey, targetProfile } from "./config.js";
 import { CliError } from "./errors.js";
+import { printResult } from "./output.js";
 import { askHidden, isInteractive, readStdin } from "./prompt.js";
 import { colors } from "./style.js";
 
@@ -76,9 +77,13 @@ export function logout({ profile: flagProfile } = {}) {
   }
 }
 
-export function whoami({ profile } = {}) {
+export function whoami({ profile, json } = {}) {
   const c = colors(process.stdout);
   const active = requireKey(profile);
+  if (json) {
+    const info = { profile: active.profile, key: maskKey(active.key), source: active.source, file: active.file || null, api: API_BASE };
+    return printResult(info, { json: true });
+  }
   const lines = [];
   if (active.profile) lines.push(`${c.dim("Profile")}  ${active.profile}`);
   lines.push(`${c.dim("API key")}  ${maskKey(active.key)}`, `${c.dim("From   ")}  ${active.source}`);

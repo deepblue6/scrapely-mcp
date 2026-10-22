@@ -127,6 +127,20 @@ test("SCRAPELY_PROFILE picks a profile, and whoami says where the key came from"
   assert.match(env.stdout, /From\s+SCRAPELY_API_KEY environment variable/);
 });
 
+test("whoami --json gives the profile, masked key and source, never the full key", async () => {
+  const home = twoProfiles();
+  const who = await runCli(["whoami", "--json", "--profile", "bitvault"], { base: api.base, home });
+  assert.equal(who.code, 0);
+  const info = JSON.parse(who.stdout);
+  assert.deepEqual({ ...info, file: undefined, api: undefined }, { profile: "bitvault", key: "sk_live_…abcd", source: "--profile flag", file: undefined, api: undefined });
+  assert.match(info.file, /config\.json$/);
+  assert.doesNotMatch(who.stdout, new RegExp(GOOD_KEY));
+
+  const env = await runCli(["--json", "whoami"], { base: api.base, env: { SCRAPELY_API_KEY: GOOD_KEY } });
+  assert.deepEqual(JSON.parse(env.stdout).profile, null);
+  assert.match(JSON.parse(env.stdout).source, /SCRAPELY_API_KEY/);
+});
+
 test("an unknown or invalid profile exits 2 and lists the saved ones", async () => {
   const home = twoProfiles();
   const missing = await runCli(["campaigns", "list", "--profile", "nope"], { base: api.base, home, env: { SCRAPELY_API_KEY: GOOD_KEY } });

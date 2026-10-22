@@ -92,8 +92,11 @@ async function main(argv, profile) {
       return wantsHelp(afterFirst)
         ? print("scrapely logout [--profile <name>]\n\nRemove the API key saved by scrapely login (from the default profile, or the one you name).")
         : logout({ profile });
-    case "whoami":
-      return wantsHelp(afterFirst) ? print(whoamiHelp()) : whoami({ profile });
+    case "whoami": {
+      if (wantsHelp(afterFirst)) return print(whoamiHelp());
+      const { values } = parseFlags(afterFirst, { json: { type: "boolean" }, debug: { type: "boolean" } }, "whoami");
+      return whoami({ ...values, profile });
+    }
     case "profiles":
       return !second || wantsHelp(afterFirst) ? print(profilesHelp()) : runProfiles(afterFirst, { profile });
     case "setup-agent":

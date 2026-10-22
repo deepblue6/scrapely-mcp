@@ -237,7 +237,7 @@ export function loginHelp() {
 
 export function whoamiHelp() {
   return [
-    "scrapely whoami [--profile <name>]   (or: scrapely status)",
+    "scrapely whoami [--profile <name>] [--json]   (or: scrapely status)",
     "",
     "Show which API key is in use (masked), which profile it belongs to and where it comes from.",
     "",
@@ -246,7 +246,7 @@ export function whoamiHelp() {
     "  2. the SCRAPELY_API_KEY environment variable",
     "  3. the SCRAPELY_PROFILE environment variable (a profile name)",
     "  4. the default profile (set with: scrapely profiles use <name>)",
-    "  5. the profile named \"default\"",
+    "  5. the profile named \"default\", if it is the only one",
   ].join("\n");
 }
 

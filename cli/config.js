@@ -10,7 +10,7 @@
 // in the new shape on the next save.
 //
 // Which key is used, first match wins:
-//   --profile <name>  >  SCRAPELY_API_KEY  >  SCRAPELY_PROFILE  >  default_profile  >  "default"
+//   --profile <name>  >  SCRAPELY_API_KEY  >  SCRAPELY_PROFILE  >  default_profile  >  a lone "default"
 
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
