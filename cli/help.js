@@ -69,6 +69,10 @@ function fieldNotes(field, schema) {
     notes.push(`Shape: ${JSON.stringify(sampleJson(schema)).replace(/,/g, ", ")}`);
   }
   if (field.nullable && field.kind !== "boolean") notes.push(`--no-${field.flag} clears it`);
+  if (field.defaultValue !== undefined) {
+    const shown = field.kind === "boolean" ? `--${field.defaultValue ? "" : "no-"}${field.flag}` : JSON.stringify(field.defaultValue);
+    notes.push(`Default: ${shown}`);
+  }
   return notes;
 }
 

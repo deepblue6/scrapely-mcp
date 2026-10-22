@@ -7,7 +7,10 @@
 //                        Returns plain data; the MCP server wraps it as JSON text.
 //   cli                - { group, action } -> `scrapely <group> <action>`, plus optional
 //                        validate(args): a message (in CLI flag terms) when the input
-//                        can't work, checked before asking or calling the API
+//                        can't work, checked before asking or calling the API;
+//                        defaults: { input: value } so a flag can be left out;
+//                        aliases: { action: { args, summary } } for extra commands that
+//                        run the same tool with some inputs fixed (campaigns resume)
 //   destructive        - true when it sends messages, spends credits, posts tweets,
 //                        launches, pauses or removes things, or overwrites live
 //                        campaign settings or tags (the CLI asks before running it)
@@ -82,7 +85,12 @@ const accountTools = [
       is_paused: z.boolean().describe("true to pause, false to unpause"),
     },
     run: ({ account_id, is_paused }, call) => call("PATCH", "/accounts/pause", { account_id, is_paused }),
-    cli: { group: "accounts", action: "pause" },
+    cli: {
+      group: "accounts",
+      action: "pause",
+      defaults: { is_paused: true },
+      aliases: { resume: { args: { is_paused: false }, summary: "Resume DM sending for a paused Twitter/X account" } },
+    },
     destructive: true,
   },
   {
@@ -94,7 +102,12 @@ const accountTools = [
     },
     run: ({ account_id, followups_paused }, call) =>
       call("PATCH", "/accounts/pause-followups", { account_id, followups_paused }),
-    cli: { group: "accounts", action: "pause-followups" },
+    cli: {
+      group: "accounts",
+      action: "pause-followups",
+      defaults: { followups_paused: true },
+      aliases: { "resume-followups": { args: { followups_paused: false }, summary: "Resume follow-up messages for a Twitter/X account" } },
+    },
     destructive: true,
   },
   {
@@ -432,7 +445,12 @@ function campaignTools(hosted) {
         is_paused: z.boolean().describe("true to pause, false to unpause"),
       },
       run: (args, call) => call("POST", "/campaigns/pause", { ...args }),
-      cli: { group: "campaigns", action: "pause" },
+      cli: {
+        group: "campaigns",
+        action: "pause",
+        defaults: { is_paused: true },
+        aliases: { resume: { args: { is_paused: false }, summary: "Resume a paused campaign." } },
+      },
       destructive: true,
     },
     {

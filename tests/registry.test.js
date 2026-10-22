@@ -32,3 +32,24 @@ test("exactly the tools that send, spend, launch, pause, delete or overwrite ask
     "toggle_followups_pause", "toggle_pause", "toggle_warmup", "update_listener",
   ]);
 });
+
+test("pause commands pause by default, and resume commands exist", async () => {
+  const { findTool } = await import("../cli/registry.js");
+  const { parseToolArgs } = await import("../cli/args.js");
+  const pause = findTool("campaigns", "pause");
+  assert.equal((await parseToolArgs(pause, ["--campaign-name", "X"], "t")).args.is_paused, true);
+  assert.equal((await parseToolArgs(pause, ["--campaign-name", "X", "--no-is-paused"], "t")).args.is_paused, false);
+
+  const sent = [];
+  const call = async (...req) => sent.push(req);
+  for (const [group, action, key] of [["campaigns", "resume", "is_paused"], ["accounts", "resume", "is_paused"], ["accounts", "resume-followups", "followups_paused"]]) {
+    const command = findTool(group, action);
+    assert.ok(command, `${group} ${action}`);
+    assert.ok(command.destructive);
+    assert.ok(!(key in command.inputs), `${key} is fixed, not a flag`);
+    const flags = group === "campaigns" ? ["--campaign-name", "X"] : ["--account-id", "a1"];
+    const { args } = await parseToolArgs(command, flags, "t");
+    await command.run(args, call);
+    assert.equal(sent.at(-1)[2][key], false);
+  }
+});

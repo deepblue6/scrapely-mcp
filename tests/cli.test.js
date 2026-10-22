@@ -104,6 +104,17 @@ test("--yes runs destructive commands", async () => {
   assert.deepEqual(sentTo("POST", "/campaigns/pause").at(-1).body, { campaign_name: "Launch", is_paused: true });
 });
 
+test("campaigns resume unpauses, and pause needs no switch", async () => {
+  const resumed = await cli(["campaigns", "resume", "--campaign-name", "Launch", "--yes"]);
+  assert.equal(resumed.code, 0);
+  assert.deepEqual(sentTo("POST", "/campaigns/pause").at(-1).body, { campaign_name: "Launch", is_paused: false });
+  const paused = await cli(["campaigns", "pause", "--campaign-name", "Launch", "--yes"]);
+  assert.equal(paused.code, 0);
+  assert.deepEqual(sentTo("POST", "/campaigns/pause").at(-1).body, { campaign_name: "Launch", is_paused: true });
+  const help = await cli(["campaigns", "--help"]);
+  assert.match(help.stdout, /^ {2}resume \*\s+Resume a paused campaign$/m);
+});
+
 test("JSON flags can be read from stdin", async () => {
   const input = JSON.stringify([{ name: "ct0", value: "v", domain: ".x.com" }]);
   const { code } = await runCli(["accounts", "update-cookies", "--account-id", "a1", "--cookies", "-"], {
@@ -238,6 +249,9 @@ test("typos get a suggestion and exit 2", async () => {
 
   const swapped = await cli(["list", "campaigns"]);
   assert.match(swapped.stderr, /Did you mean: scrapely campaigns list\?/);
+
+  const synonym = await cli(["campaigns", "unpause"]);
+  assert.match(synonym.stderr, /Did you mean: scrapely campaigns resume\?/);
 });
 
 test("NO_COLOR and pipes never get ANSI codes", async () => {

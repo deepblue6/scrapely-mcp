@@ -9,7 +9,7 @@ import { login, logout, whoami } from "./cli/auth.js";
 import { parseFlags } from "./cli/args.js";
 import { UsageError, describeError } from "./cli/errors.js";
 import { apiHelp, commandHelp, groupHelp, loginHelp, rootHelp } from "./cli/help.js";
-import { BUILTINS, BUILTIN_ALIASES, allCommandNames, findTool, groupNames, groupTools } from "./cli/registry.js";
+import { ACTION_SYNONYMS, BUILTINS, BUILTIN_ALIASES, allCommandNames, findTool, groupNames, groupTools } from "./cli/registry.js";
 import { runApi, runTool } from "./cli/run.js";
 import { closest } from "./cli/suggest.js";
 import { colors } from "./cli/style.js";
@@ -25,7 +25,9 @@ function unknownCommand(words) {
   let guess = null;
 
   if (groupNames().includes(first)) {
-    const action = closest(second, groupTools(first).map((t) => t.cli.action));
+    const actions = groupTools(first).map((t) => t.cli.action);
+    const synonym = ACTION_SYNONYMS[second];
+    const action = actions.includes(synonym) ? synonym : closest(second, actions);
     if (action) guess = `${first} ${action}`;
   } else if (second && !second.startsWith("-") && findTool(second, first)) {
     guess = `${second} ${first}`; // "list campaigns" -> "campaigns list"

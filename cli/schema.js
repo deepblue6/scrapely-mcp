@@ -13,15 +13,17 @@ function unwrap(schema) {
   let optional = false;
   let nullable = false;
   let description = schema.description;
+  let defaultValue;
   for (;;) {
     const type = inner._def.typeName;
+    if (type === "ZodDefault") defaultValue = inner._def.defaultValue();
     if (type === "ZodOptional" || type === "ZodDefault") optional = true;
     else if (type === "ZodNullable") nullable = true;
     else if (type !== "ZodEffects") break;
     inner = type === "ZodEffects" ? inner._def.schema : inner._def.innerType;
     description = description || inner.description;
   }
-  return { inner, optional, nullable, description };
+  return { inner, optional, nullable, description, defaultValue };
 }
 
 function primitiveKind(schema) {
@@ -33,9 +35,9 @@ function primitiveKind(schema) {
 
 // kind is one of: string, number, boolean, enum, list (repeatable scalars), json
 export function describeField(key, schema) {
-  const { inner, optional, nullable, description } = unwrap(schema);
+  const { inner, optional, nullable, description, defaultValue } = unwrap(schema);
   const type = inner._def.typeName;
-  const field = { key, flag: toFlag(key), optional, nullable, description: description || "" };
+  const field = { key, flag: toFlag(key), optional, nullable, defaultValue, description: description || "" };
 
   if (type === "ZodString") return { ...field, kind: "string" };
   if (type === "ZodNumber") return { ...field, kind: "number" };

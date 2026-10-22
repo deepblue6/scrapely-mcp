@@ -1,4 +1,8 @@
-// CLI view of the shared tool registry: `scrapely <group> <action>` -> tool.
+// CLI view of the shared tool registry: `scrapely <group> <action>` -> command.
+//
+// Most commands are a tool as-is. A tool's cli.defaults let a flag be left out
+// (`campaigns pause` pauses), and cli.aliases add commands that run the same
+// tool with some inputs fixed (`campaigns resume` = pause with is_paused false).
 
 import { tools } from "../tools.js";
 
@@ -31,26 +35,57 @@ export const BUILTINS = {
 
 export const BUILTIN_ALIASES = { status: "whoami" };
 
-export function commandName(tool) {
-  return `${tool.cli.group} ${tool.cli.action}`;
+// Words people try that mean an existing action ("campaigns unpause" -> resume).
+export const ACTION_SYNONYMS = {
+  unpause: "resume", start: "resume", continue: "resume",
+  delete: "remove", rm: "remove",
+  ls: "list", all: "list",
+  show: "get", view: "get", info: "get",
+  edit: "update", new: "create",
+};
+
+function withDefaults(inputs, defaults = {}) {
+  return Object.fromEntries(Object.entries(inputs).map(([key, schema]) =>
+    [key, key in defaults ? schema.default(defaults[key]) : schema]));
+}
+
+function without(inputs, fixed) {
+  return Object.fromEntries(Object.entries(inputs).filter(([key]) => !(key in fixed)));
+}
+
+function commandsFor(tool) {
+  const { defaults, aliases = {}, ...cli } = tool.cli;
+  const main = { ...tool, inputs: withDefaults(tool.inputs, defaults), cli };
+  const extra = Object.entries(aliases).map(([action, { args, summary }]) => ({
+    ...tool,
+    description: summary,
+    inputs: without(tool.inputs, args),
+    run: (input, call) => tool.run({ ...input, ...args }, call),
+    cli: { ...cli, action },
+  }));
+  return [main, ...extra];
+}
+
+export const commands = tools.flatMap(commandsFor);
+
+export function commandName(command) {
+  return `${command.cli.group} ${command.cli.action}`;
 }
 
 export function findTool(group, action) {
-  return tools.find((t) => t.cli.group === group && t.cli.action === action) || null;
+  return commands.find((t) => t.cli.group === group && t.cli.action === action) || null;
 }
 
 export function groupTools(group) {
-  return tools.filter((t) => t.cli.group === group);
+  return commands.filter((t) => t.cli.group === group);
 }
 
 export function groupNames() {
   const known = Object.keys(GROUPS);
-  const extra = [...new Set(tools.map((t) => t.cli.group))].filter((g) => !known.includes(g));
+  const extra = [...new Set(commands.map((t) => t.cli.group))].filter((g) => !known.includes(g));
   return [...known.filter((g) => groupTools(g).length), ...extra];
 }
 
 export function allCommandNames() {
-  return tools.map(commandName);
+  return commands.map(commandName);
 }
-
-export { tools };
