@@ -250,6 +250,10 @@ test("confirmations for commands that change things name the profile in use", as
   for (const out of [tool, raw, env]) assert.doesNotMatch(out.stderr, new RegExp(`${GOOD_KEY}|${OTHER_KEY}`));
   const done = await runCli(["campaigns", "pause", "--campaign-name", "Launch", "--profile", "bitvault", "--yes"], { base: api.base, home });
   assert.equal(done.code, 0);
+  assert.match(done.stderr, /^Profile: bitvault \(sk_live_…abcd\)$/m, "--yes skips the question but still names the workspace");
+  const rawYes = await runCli(["api", "POST", "/campaigns/pause", "--data", "{}", "--yes"], { base: api.base, home: twoProfiles(), env: { SCRAPELY_PROFILE: "bitvault" } });
+  assert.match(rawYes.stderr, /^Profile: bitvault \(sk_live_…abcd\)$/m);
+  assert.doesNotMatch(done.stderr + rawYes.stderr, new RegExp(GOOD_KEY));
 });
 
 test("help documents --profile and the profiles command", async () => {

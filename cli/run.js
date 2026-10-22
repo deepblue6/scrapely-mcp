@@ -60,6 +60,7 @@ export async function runTool(tool, argv, { profile } = {}) {
     const summary = `${c.yellow("About to run")} ${c.bold(`scrapely ${name}`)}: ${what}` +
       (details ? `\n  ${details}` : "") + `\n  ${describeActive(active)}`;
     await confirm(summary, { yes: globals.yes, commandName: name });
+    if (globals.yes) process.stderr.write(`${describeActive(active)}\n`); // which workspace, even without the question
   }
 
   const data = await tool.run(args, caller(active));
@@ -129,6 +130,7 @@ export async function runApi(argv, { profile } = {}) {
   if (method !== "GET") {
     const summary = `${colors(process.stderr).yellow("About to send")} ${method} ${path}\n  ${describeActive(active)}`;
     await confirm(summary, { yes: values.yes, commandName: "api" });
+    if (values.yes) process.stderr.write(`${describeActive(active)}\n`);
   }
 
   const data = await caller(active)(method, path, body, query);

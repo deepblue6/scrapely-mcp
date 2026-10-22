@@ -12,6 +12,15 @@ export class UsageError extends Error {
   }
 }
 
+// A command that changes things was run without --yes and with no terminal to ask on.
+// Exit code 2 like a usage error, but nothing was typed wrong, so no --help pointer.
+export class NeedsConfirmation extends UsageError {
+  constructor(message) {
+    super(message);
+    this.name = "NeedsConfirmation";
+  }
+}
+
 // Expected failure with a message that is already customer-friendly. Exit code 1.
 export class CliError extends Error {
   constructor(message) {
@@ -40,6 +49,7 @@ function serverMessage(err) {
 
 // Turns any error into { message, exitCode } for printing.
 export function describeError(err) {
+  if (err instanceof NeedsConfirmation) return { message: err.message, exitCode: 2 };
   if (err instanceof UsageError) {
     const hint = err.helpCommand ? `\nRun: scrapely ${err.helpCommand} --help` : "\nRun: scrapely --help";
     return { message: err.message + hint, exitCode: 2 };

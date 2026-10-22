@@ -126,7 +126,9 @@ test("destructive commands refuse to run without --yes when not in a terminal", 
   assert.equal(code, 2);
   assert.match(stderr, /About to run scrapely campaigns pause/);
   assert.match(stderr, /--campaign-name Launch {2}--is-paused/);
-  assert.match(stderr, /--yes/);
+  assert.match(stderr, /Nothing was done: this needs confirmation\. Re-run with --yes to go ahead\./);
+  assert.match(stderr, /AI agents: show the lines above to the user and add --yes only after they approve/);
+  assert.doesNotMatch(stderr, /--help/, "not a usage mistake, so no pointer to --help");
   assert.equal(sentTo("POST", "/campaigns/pause").length, before, "nothing was sent");
 });
 

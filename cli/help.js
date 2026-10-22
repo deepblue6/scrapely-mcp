@@ -7,7 +7,7 @@ import { cliText, fieldText, findWith } from "./wording.js";
 
 const GLOBAL_FLAGS = [
   ["--json", "Print raw JSON instead of tables"],
-  ["-y, --yes", "Don't ask \"Continue?\" before commands that change things"],
+  ["-y, --yes", "Don't ask \"Continue?\" before commands that change things (agents: only after the user approves)"],
   ["--profile <name>", "Use the API key saved under this profile (see scrapely profiles)"],
   ["--debug", "Show technical details when something fails"],
   ["-h, --help", "Show help"],
