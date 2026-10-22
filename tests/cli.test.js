@@ -165,7 +165,9 @@ test("JSON flags can be read from stdin", async () => {
 test("401 explains how to log in", async () => {
   const { code, stderr } = await cli(["accounts", "list"], { env: { SCRAPELY_API_KEY: "sk_live_wrong0000000" } });
   assert.equal(code, 1);
-  assert.match(stderr, /Invalid or missing API key\. Run: scrapely login/);
+  assert.match(stderr, /Scrapely rejected the key in SCRAPELY_API_KEY \(sk_live_…0000\)/);
+  assert.match(stderr, /unset SCRAPELY_API_KEY/);
+  assert.doesNotMatch(stderr, /sk_live_wrong/);
 });
 
 test("no key at all asks you to log in", async () => {

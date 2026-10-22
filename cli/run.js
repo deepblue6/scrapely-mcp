@@ -1,7 +1,7 @@
 // Running a registry tool, and the raw `scrapely api` escape hatch.
 
 import { readFileSync } from "node:fs";
-import { apiCall, apiUrl } from "../api.js";
+import { ApiError, apiCall, apiUrl } from "../api.js";
 import { parseFlags, parseToolArgs } from "./args.js";
 import { requireKey } from "./auth.js";
 import { describeActive } from "./config.js";
@@ -35,6 +35,19 @@ function summarizeArgs(args, tool) {
   }).join("  ");
 }
 
+// apiCall with the active key. A failed call remembers which key it used, so the
+// error can say how to fix that key (saved profile vs SCRAPELY_API_KEY).
+function caller(active) {
+  return async (method, path, body, query) => {
+    try {
+      return await apiCall(active.key, method, path, body, query);
+    } catch (err) {
+      if (err instanceof ApiError) err.active = active;
+      throw err;
+    }
+  };
+}
+
 export async function runTool(tool, argv, { profile } = {}) {
   const name = commandName(tool);
   const { args, globals } = await parseToolArgs(tool, argv, name);
@@ -49,7 +62,7 @@ export async function runTool(tool, argv, { profile } = {}) {
     await confirm(summary, { yes: globals.yes, commandName: name });
   }
 
-  const data = await tool.run(args, (method, path, body, query) => apiCall(active.key, method, path, body, query));
+  const data = await tool.run(args, caller(active));
   printResult(data, globals);
 
   // Chunked tools (imports, add-leads) report a mid-way failure inside the result instead of throwing.
@@ -118,6 +131,6 @@ export async function runApi(argv, { profile } = {}) {
     await confirm(summary, { yes: values.yes, commandName: "api" });
   }
 
-  const data = await apiCall(active.key, method, path, body, query);
+  const data = await caller(active)(method, path, body, query);
   printResult(data, { json: true });
 }

@@ -17,6 +17,12 @@ export function requireKey(profile) {
   if (active.overridesEnv) {
     process.stderr.write(`Note: using profile "${active.profile}" (--profile); SCRAPELY_API_KEY is ignored for this command.\n`);
   }
+  // The env key silently beating the user's profiles is how commands end up in the wrong workspace.
+  const envProfile = process.env.SCRAPELY_PROFILE?.trim();
+  if (!active.profile && (envProfile || profileNames().length)) {
+    const ignored = envProfile ? `SCRAPELY_PROFILE=${envProfile} and your saved profiles are` : "your saved profiles are";
+    process.stderr.write(`Note: using the key in SCRAPELY_API_KEY (${maskKey(active.key)}); ${ignored} ignored. Pass --profile <name> to use one.\n`);
+  }
   return active;
 }
 

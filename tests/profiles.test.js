@@ -69,7 +69,7 @@ test("--profile picks the key for any command, before or after it", async () => 
   const home = twoProfiles();
   const byDefault = await runCli(["accounts", "list"], { base: api.base, home });
   assert.equal(byDefault.code, 1, "the default profile (acme) holds a key the mock rejects");
-  assert.match(byDefault.stderr, /Invalid or missing API key/);
+  assert.match(byDefault.stderr, /Scrapely rejected the key saved as profile "acme" \(sk_live_…9999\)\. Run: scrapely login --profile acme/);
 
   for (const args of [["accounts", "list", "--profile", "bitvault"], ["--profile", "bitvault", "accounts", "list"], ["--json", "--profile=bitvault", "accounts", "list"]]) {
     const { code } = await runCli(args, { base: api.base, home });
@@ -91,6 +91,25 @@ test("--profile beats SCRAPELY_API_KEY, with a note; otherwise the env key wins"
   const env = await runCli(["accounts", "list"], { base: api.base, home: homeWith({ profiles: { default: { api_key: OTHER_KEY } } }), env: { SCRAPELY_API_KEY: GOOD_KEY } });
   assert.equal(env.code, 0);
   assert.equal(api.requests.at(-1).key, GOOD_KEY);
+});
+
+test("when SCRAPELY_API_KEY beats saved profiles or SCRAPELY_PROFILE, every command says so", async () => {
+  const home = twoProfiles();
+  const env = await runCli(["accounts", "list", "--json"], { base: api.base, home, env: { SCRAPELY_API_KEY: GOOD_KEY } });
+  assert.equal(env.code, 0);
+  assert.match(env.stderr, /^Note: using the key in SCRAPELY_API_KEY \(sk_live_…abcd\); your saved profiles are ignored\. Pass --profile <name> to use one\.$/m);
+  JSON.parse(env.stdout); // the note goes to stderr, so --json output stays clean
+
+  const both = await runCli(["whoami"], { base: api.base, home, env: { SCRAPELY_API_KEY: GOOD_KEY, SCRAPELY_PROFILE: "bitvault" } });
+  assert.match(both.stderr, /SCRAPELY_PROFILE=bitvault and your saved profiles are ignored/);
+
+  const stale = await runCli(["campaigns", "list"], { base: api.base, home, env: { SCRAPELY_API_KEY: OTHER_KEY } });
+  assert.equal(stale.code, 1);
+  assert.match(stale.stderr, /rejected the key in SCRAPELY_API_KEY \(sk_live_…9999\)[\s\S]*unset SCRAPELY_API_KEY[\s\S]*--profile <name>/);
+  assert.doesNotMatch(stale.stderr, /Run: scrapely login/);
+
+  const noProfiles = await runCli(["accounts", "list"], { base: api.base, env: { SCRAPELY_API_KEY: GOOD_KEY } });
+  assert.doesNotMatch(noProfiles.stderr, /Note:/, "no note when there are no profiles to ignore");
 });
 
 test("SCRAPELY_PROFILE picks a profile, and whoami says where the key came from", async () => {

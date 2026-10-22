@@ -1,6 +1,7 @@
 // Error types and the friendly messages customers see when something fails.
 
 import { ApiError } from "../api.js";
+import { maskKey } from "./config.js";
 
 // Wrong command, flag or value. Exit code 2, with a pointer to the right --help.
 export class UsageError extends Error {
@@ -21,6 +22,18 @@ export class CliError extends Error {
 
 const NETWORK_CODES = ["ENOTFOUND", "EAI_AGAIN", "ECONNREFUSED", "ECONNRESET", "ETIMEDOUT", "UND_ERR_CONNECT_TIMEOUT"];
 
+// What to do about a rejected key depends on where it came from (run.js sets err.active).
+function rejectedKey(active) {
+  if (active?.profile) {
+    return `Invalid API key: Scrapely rejected the key saved as profile "${active.profile}" (${maskKey(active.key)}). Run: scrapely login --profile ${active.profile}`;
+  }
+  if (active) {
+    return `Invalid API key: Scrapely rejected the key in SCRAPELY_API_KEY (${maskKey(active.key)}), which is used instead of your saved profiles.\n` +
+      "Unset it (unset SCRAPELY_API_KEY) to use your saved profiles, or pass --profile <name>.";
+  }
+  return "Invalid or missing API key. Run: scrapely login";
+}
+
 function serverMessage(err) {
   return err.message.replace(/^API Error \d+: /, "");
 }
@@ -34,9 +47,7 @@ export function describeError(err) {
 
   if (err instanceof ApiError) {
     const detail = serverMessage(err);
-    if (err.status === 401 || err.status === 403) {
-      return { message: `Invalid or missing API key. Run: scrapely login\n(Scrapely said: ${detail})`, exitCode: 1 };
-    }
+    if (err.status === 401 || err.status === 403) return { message: `${rejectedKey(err.active)}\n(Scrapely said: ${detail})`, exitCode: 1 };
     if (err.status === 404) return { message: `Not found: ${detail}\nCheck the name or ID you passed.`, exitCode: 1 };
     if (err.status === 429) return { message: "Rate limited, try again shortly.", exitCode: 1 };
     if (err.status >= 500) {
