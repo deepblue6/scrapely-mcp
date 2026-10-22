@@ -144,6 +144,7 @@ export function rootHelp(version) {
     rows([...GLOBAL_FLAGS, ["--version", "Show the version"]], c, 14),
     "",
     `Run ${c.cyan("scrapely <group> --help")} to see a group's commands.`,
+    c.dim("Part of the scrapely-mcp npm package. Without installing: npx -p scrapely-mcp scrapely <command>"),
   ].join("\n");
 }
 

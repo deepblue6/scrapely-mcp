@@ -44,7 +44,7 @@
     "url": "https://github.com/deepblue6/scrapely-mcp/issues"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=18.3"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",

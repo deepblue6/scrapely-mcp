@@ -62,6 +62,32 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
 
 Any MCP-compatible client works. Just run `npx scrapely-mcp` with `SCRAPELY_API_KEY` set in the environment.
 
+## Command-line tool (`scrapely`)
+
+The same package ships a `scrapely` command for running Scrapely from your terminal or scripts. It offers the same tools as the MCP server.
+
+```bash
+npm install -g scrapely-mcp     # installs the `scrapely` command
+scrapely login                  # paste your API key (it stays hidden)
+scrapely campaigns list
+scrapely campaigns get --campaign-name "Agency owners"
+scrapely campaigns pause --campaign-name "Agency owners"
+scrapely campaigns resume --campaign-name "Agency owners"
+scrapely conversations list --json
+```
+
+Without installing: `npx -p scrapely-mcp scrapely campaigns list`.
+
+> `npx scrapely` is **not** this tool: it downloads an unrelated npm package with that name. Use `npx -p scrapely-mcp scrapely ...` or install `scrapely-mcp` globally.
+
+- `scrapely --help` lists every group; add `--help` to any group or command for its options and an example.
+- Results print as tables; add `--json` for raw JSON (for scripts and `jq`).
+- Commands that send DMs, spend credits, launch, pause, delete or overwrite ask "Continue? [y/N]" first. In scripts (no terminal), pass `--yes`.
+- The key is saved in `~/.config/scrapely/config.json` (readable only by you; `%APPDATA%\scrapely` on Windows). `SCRAPELY_API_KEY` in the environment takes priority. `scrapely whoami` shows which key is in use.
+- `scrapely api GET /campaigns --query limit=5` calls any API endpoint directly.
+
+Requires Node.js 18.3 or newer.
+
 ## Available Tools
 
 | Tool | Description |
@@ -160,7 +186,7 @@ This opens a browser GUI where you can test every tool before connecting it to C
 
 ## Requirements
 
-- Node.js 18+
+- Node.js 18.3+
 - A Scrapely account with an API key
 
 ## License
