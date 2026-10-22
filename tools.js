@@ -788,7 +788,8 @@ const listenerTools = [
 
 const WEBHOOK_URL_HINT = "The webhook URL exactly as list_webhooks shows it";
 const WEBHOOK_KEY_HINT = "Your own secret. Scrapely sends it in the X-Webhook-Key header of every event so your endpoint can check the request came from Scrapely";
-const GENERATED_KEY_NOTE = "Save this key now: Scrapely won't show it again. Your endpoint receives it in the X-Webhook-Key header.";
+// The API's own "note" already says to save the key; this only adds where it goes.
+const GENERATED_KEY_NOTE = "Your endpoint receives this key in the X-Webhook-Key header of every event.";
 
 // Shown after a command whose response carries a newly generated key.
 const generatedKeyNotice = (data) => (data && typeof data.key === "string" ? GENERATED_KEY_NOTE : null);
@@ -818,6 +819,7 @@ const webhookTools = [
     cli: {
       group: "webhooks",
       action: "add",
+      description: "Add a webhook URL. Scrapely will POST events (replies, DMs sent/seen, account disconnects, new followers) to it as JSON. Max 10 URLs. Optionally protect it with a key sent in the X-Webhook-Key header: pass your own with --key, or --generate-key to have Scrapely create a strong one. A generated key is printed once and never shown again, so save it right away.",
       example: "--url https://hooks.example.com/scrapely --generate-key",
       validate: ({ key, generate_key }) => (key !== undefined && generate_key ? "Pass --key or --generate-key, not both." : null),
       notice: generatedKeyNotice,
@@ -843,6 +845,7 @@ const webhookTools = [
       group: "webhooks",
       action: "set-key",
       summary: "Change, rotate or remove a webhook's key",
+      description: "Change, rotate or remove the X-Webhook-Key of an existing webhook URL. Pass exactly one of: --key (your own new key), --generate-key (Scrapely generates one, printed once and never shown again) or --remove-key. The old key stops being sent immediately, so update your endpoint to accept the new one.",
       example: "--url https://hooks.example.com/scrapely --generate-key",
       validate: ({ key, generate_key, remove_key }) =>
         [key !== undefined, Boolean(generate_key), Boolean(remove_key)].filter(Boolean).length === 1

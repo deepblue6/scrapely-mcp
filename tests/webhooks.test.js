@@ -75,22 +75,24 @@ test("webhooks add sends the URL and key, without asking first", async () => {
   assert.deepEqual(sentTo("POST", "/webhooks").at(-1).body, { url: "https://93.184.215.14/hook", key: SECRET });
 });
 
-test("webhooks add --generate-key prints the new key once, with a save-it-now note", async () => {
+test("webhooks add --generate-key prints the new key once, with one save-it-now note", async () => {
   const { code, stdout, stderr } = await cli(["webhooks", "add", "--url", "https://93.184.215.14/new", "--generate-key"]);
   assert.equal(code, 0);
   assert.deepEqual(sentTo("POST", "/webhooks").at(-1).body, { url: "https://93.184.215.14/new", generate_key: true });
   assert.match(stdout, new RegExp(`^key\\s+${GENERATED}$`, "m"));
   assert.equal(count(stdout + stderr, GENERATED), 1, "shown exactly once");
-  assert.match(stderr, /Save this key now: Scrapely won't show it again/);
+  assert.equal(count(stdout + stderr, "Save this key now"), 1, "the API's note, not repeated");
+  assert.match(stderr, /Your endpoint receives this key in the X-Webhook-Key header/);
 
   const json = await cli(["webhooks", "add", "--url", "https://93.184.215.14/new2", "--generate-key", "--json"]);
   assert.equal(JSON.parse(json.stdout).key, GENERATED, "--json output stays valid JSON");
-  assert.match(json.stderr, /Save this key now/);
+  assert.equal(JSON.parse(json.stdout).note, KEY_NOTE);
+  assert.match(json.stderr, /X-Webhook-Key header/);
 });
 
 test("webhooks add without a generated key has no save-it note", async () => {
-  const { stderr } = await cli(["webhooks", "add", "--url", "https://93.184.215.14/plain"]);
-  assert.doesNotMatch(stderr, /Save this key/);
+  const { stdout, stderr } = await cli(["webhooks", "add", "--url", "https://93.184.215.14/plain"]);
+  assert.doesNotMatch(stdout + stderr, /Save this key|X-Webhook-Key header/);
   assert.deepEqual(sentTo("POST", "/webhooks").at(-1).body, { url: "https://93.184.215.14/plain" });
 });
 
@@ -182,6 +184,14 @@ test("webhooks test exits 1 when a webhook fails", async () => {
   assert.equal(code, 1);
   assert.match(stdout, /^URL\s+OK\s+STATUS\s+ERROR$/m);
   assert.match(stdout, /93\.184\.215\.15\/down\s+no\s+500\s+HTTP 500/);
+});
+
+test("webhooks add and set-key help name the --key flag", async () => {
+  const add = await cli(["webhooks", "add", "--help"]);
+  assert.match(add.stdout.replace(/\s+/g, " "), /pass your own with --key, or --generate-key/);
+  assert.doesNotMatch(add.stdout, /show it to the user/);
+  const setKey = await cli(["webhooks", "set-key", "--help"]);
+  assert.match(setKey.stdout.replace(/\s+/g, " "), /Pass exactly one of: --key \(your own new key\), --generate-key/);
 });
 
 test("webhook URL flags say where to find the URL", async () => {
