@@ -21,6 +21,7 @@ export const API_BASE = pickApiBase(process.env.SCRAPELY_API_BASE);
 
 const { origin: API_ORIGIN, pathname: API_PATH } = new URL(API_BASE);
 const MAX_REDIRECTS = 5;
+const MAX_ERROR_TEXT = 200;
 
 // Carries the HTTP status and parsed body so callers can react to them.
 // The message keeps the "API Error <status>: <message>" format agents already see.
@@ -55,7 +56,10 @@ function errorMessage(data, res) {
   if (data && typeof data === "object") {
     return data.message || data.error || JSON.stringify(data);
   }
-  return data || res.statusText || "Unknown error";
+  // A proxy's HTML page can be kilobytes long: keep a short, single-line excerpt (err.data has it all).
+  const text = String(data || "").replace(/\s+/g, " ").trim();
+  if (text.length > MAX_ERROR_TEXT) return text.slice(0, MAX_ERROR_TEXT) + "…";
+  return text || res.statusText || "Unknown error";
 }
 
 // fetch, following redirects only within the Scrapely API's own origin.

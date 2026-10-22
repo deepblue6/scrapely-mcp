@@ -75,3 +75,14 @@ test("SCRAPELY_API_BASE is only honored for localhost", async () => {
   assert.equal(base("http://localhost:4000/api/v1/").stdout.trim(), "http://localhost:4000/api/v1");
   assert.equal(base("http://127.0.0.1:4000/api/v1").stderr, "");
 });
+
+test("long non-JSON error pages are shortened to one line (full text kept on err.data)", async () => {
+  await assert.rejects(apiCall("sk_test_key", "GET", "/html"), (err) => {
+    assert.equal(err.status, 502);
+    assert.match(err.message, /^API Error 502: <html> Bad gateway Bad gateway/);
+    assert.ok(err.message.length <= "API Error 502: ".length + 201, `too long: ${err.message.length}`);
+    assert.ok(err.message.endsWith("…"));
+    assert.match(err.data, /^<html>\n/);
+    return true;
+  });
+});
