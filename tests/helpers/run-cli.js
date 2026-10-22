@@ -12,8 +12,8 @@ export function tempHome() {
   return mkdtempSync(join(tmpdir(), "scrapely-cli-test-"));
 }
 
-// options: { base, home, env, input } -> { code, stdout, stderr }
-export function runCli(args, { base, home = tempHome(), env = {}, input = "" } = {}) {
+// options: { base, home, env, input, cwd } -> { code, stdout, stderr }
+export function runCli(args, { base, home = tempHome(), env = {}, input = "", cwd } = {}) {
   const childEnv = { ...process.env, HOME: home, XDG_CONFIG_HOME: join(home, ".config"), ...env };
   delete childEnv.SCRAPELY_API_KEY; // never pick up a real key from the developer's shell
   delete childEnv.SCRAPELY_PROFILE;
@@ -24,7 +24,7 @@ export function runCli(args, { base, home = tempHome(), env = {}, input = "" } =
   if (env.SCRAPELY_PROFILE) childEnv.SCRAPELY_PROFILE = env.SCRAPELY_PROFILE;
 
   return new Promise((resolve) => {
-    const child = spawn(process.execPath, [CLI, ...args], { env: childEnv });
+    const child = spawn(process.execPath, [CLI, ...args], { env: childEnv, cwd });
     let stdout = "";
     let stderr = "";
     child.stdout.on("data", (d) => (stdout += d));
