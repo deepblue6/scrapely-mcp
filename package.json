@@ -9,6 +9,8 @@
   },
   "files": [
     "server.js",
+    "api.js",
+    "tools.js",
     "README.md"
   ],
   "scripts": {
