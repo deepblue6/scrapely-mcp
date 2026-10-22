@@ -19,25 +19,37 @@ const { version } = JSON.parse(readFileSync(new URL("./package.json", import.met
 const wantsHelp = (args) => args.includes("--help") || args.includes("-h");
 const print = (text) => process.stdout.write(text + "\n");
 
-function unknownCommand(words) {
-  const [first, second] = words;
-  const typed = words.filter((w) => !w.startsWith("-")).slice(0, 2).join(" ");
-  let guess = null;
+// Words people try at the top level that aren't groups.
+const TOP_LEVEL_SYNONYMS = { inbox: "conversations list", dms: "conversations list", messages: "conversations list", version: "--version" };
 
+function guesses(first, second) {
+  if (TOP_LEVEL_SYNONYMS[first]) return [TOP_LEVEL_SYNONYMS[first]];
   if (groupNames().includes(first)) {
     const actions = groupTools(first).map((t) => t.cli.action);
     const synonym = ACTION_SYNONYMS[second];
     const action = actions.includes(synonym) ? synonym : closest(second, actions);
-    if (action) guess = `${first} ${action}`;
-  } else if (second && !second.startsWith("-") && findTool(second, first)) {
-    guess = `${second} ${first}`; // "list campaigns" -> "campaigns list"
-  } else {
-    guess = (second && !second.startsWith("-") && closest(`${first} ${second}`, allCommandNames()))
-      || closest(first, [...groupNames(), ...Object.keys(BUILTINS)]);
+    return action ? [`${first} ${action}`] : [];
   }
+  if (second && findTool(second, first)) return [`${second} ${first}`]; // "list campaigns" -> "campaigns list"
+  const pair = second && closest(`${first} ${second}`, allCommandNames());
+  if (pair) return [pair];
+  const asAction = groupNames().filter((g) => findTool(g, first)).map((g) => `${g} ${first}`); // "leads" -> "campaigns leads"
+  if (asAction.length) return asAction;
+  const near = closest(first, [...groupNames(), ...Object.keys(BUILTINS)]);
+  return near ? [near] : [];
+}
 
-  const hint = guess ? ` Did you mean: scrapely ${guess}?` : "";
-  return new UsageError(`Unknown command "${typed}".${hint}`, groupNames().includes(first) ? first : "");
+function unknownCommand(words) {
+  const firstFlag = words.findIndex((w) => w.startsWith("-"));
+  const [first, second] = firstFlag < 0 ? words : words.slice(0, firstFlag);
+  const typed = [first, second].filter(Boolean).join(" ");
+  const isGroup = groupNames().includes(first);
+  const found = guesses(first, second);
+
+  let hint = "";
+  if (found.length) hint = ` Did you mean: ${found.map((g) => `scrapely ${g}`).join(" or ")}?`;
+  else if (isGroup) hint = ` Commands in ${first}: ${groupTools(first).map((t) => t.cli.action).join(", ")}.`;
+  return new UsageError(`Unknown command "${typed}".${hint}`, isGroup ? first : "");
 }
 
 // `scrapely help campaigns launch` is the same as `scrapely campaigns launch --help`.

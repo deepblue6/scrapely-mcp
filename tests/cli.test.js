@@ -125,9 +125,14 @@ test("destructive commands refuse to run without --yes when not in a terminal", 
   const { code, stderr } = await cli(["campaigns", "pause", "--campaign-name", "Launch", "--is-paused"]);
   assert.equal(code, 2);
   assert.match(stderr, /About to run scrapely campaigns pause/);
-  assert.match(stderr, /campaign_name="Launch"/);
+  assert.match(stderr, /--campaign-name Launch {2}--is-paused/);
   assert.match(stderr, /--yes/);
   assert.equal(sentTo("POST", "/campaigns/pause").length, before, "nothing was sent");
+});
+
+test("the confirmation shows the flags as typed", async () => {
+  const { stderr } = await cli(["dm", "send", "--conversation-id", "123-456", "--message", "Hi Bob, thanks!", "--account-id", "acc-1"]);
+  assert.match(stderr, /About to run scrapely dm send: Send a direct message to an existing conversation\n {2}--conversation-id 123-456 {2}--message "Hi Bob, thanks!" {2}--account-id acc-1/);
 });
 
 test("--yes runs destructive commands", async () => {
@@ -282,6 +287,15 @@ test("typos get a suggestion and exit 2", async () => {
 
   const swapped = await cli(["list", "campaigns"]);
   assert.match(swapped.stderr, /Did you mean: scrapely campaigns list\?/);
+
+  const leads = await cli(["leads", "--campaign-name", "x"]);
+  assert.match(leads.stderr, /Unknown command "leads"\. Did you mean: scrapely sources leads or scrapely campaigns leads\?/);
+
+  const inbox = await cli(["inbox"]);
+  assert.match(inbox.stderr, /Did you mean: scrapely conversations list\?/);
+
+  const noMatch = await cli(["conversations", "get"]);
+  assert.match(noMatch.stderr, /Commands in conversations: list\./);
 
   const synonym = await cli(["campaigns", "unpause"]);
   assert.match(synonym.stderr, /Did you mean: scrapely campaigns resume\?/);
