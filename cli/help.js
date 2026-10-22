@@ -139,7 +139,7 @@ export function groupHelp(group) {
     "",
     c.bold("Commands"),
     rows(list, c, 14),
-    ...(anyDestructive ? ["", c.dim("* asks you to confirm first: it sends messages, spends credits or changes live data")] : []),
+    ...(anyDestructive ? ["", c.dim("* asks you to confirm first: it sends, spends credits, launches, pauses, deletes or overwrites")] : []),
     "",
     `Run ${c.cyan(`scrapely ${group} <command> --help`)} to see its options.`,
   ].join("\n");
@@ -161,7 +161,7 @@ export function commandHelp(tool) {
   if (optional.length) out.push("", c.bold("Options"), rows(optional.map(toRow), c, nameWidth));
   out.push("", c.bold("Example"), `  ${example(tool, fields)}`);
   if (tool.destructive) {
-    out.push("", c.yellow("This changes things in your account (sends, spends credits or edits live data)."),
+    out.push("", c.yellow("This sends, spends credits, launches, pauses, deletes or overwrites something in your account."),
       c.yellow("You'll be asked to confirm first; add --yes to skip the question."));
   }
   out.push("", c.dim("Also: --json, --yes, --debug"));

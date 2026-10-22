@@ -23,14 +23,12 @@ test("every group has a summary for scrapely --help", () => {
   for (const tool of tools) assert.ok(GROUPS[tool.cli.group], `no GROUPS entry for ${tool.cli.group}`);
 });
 
-test("tools that send, spend or remove are marked destructive", () => {
-  const destructive = tools.filter((t) => t.destructive).map((t) => t.name);
-  for (const name of ["send_dm", "launch_campaign", "launch_import_campaign", "pause_campaign", "remove_account",
-    "remove_listener", "schedule_tweet", "cancel_scheduled_tweet", "enrich_email", "enrich_twitter", "search_people",
-    "add_leads_to_campaign", "add_lead_source_to_campaign"]) {
-    assert.ok(destructive.includes(name), `${name} should be destructive`);
-  }
-  for (const name of ["list_accounts", "list_campaigns", "get_campaign_detail", "get_crm_data"]) {
-    assert.ok(!destructive.includes(name), `${name} should not ask for confirmation`);
-  }
+test("exactly the tools that send, spend, launch, pause, delete or overwrite ask first", () => {
+  const destructive = tools.filter((t) => t.destructive).map((t) => t.name).sort();
+  assert.deepEqual(destructive, [
+    "add_lead_source_to_campaign", "add_leads_to_campaign", "cancel_scheduled_tweet", "create_scraping_source",
+    "edit_campaign", "enrich_email", "enrich_twitter", "launch_campaign", "launch_import_campaign", "pause_campaign",
+    "remove_account", "remove_listener", "schedule_tweet", "search_people", "send_dm", "set_account_tags",
+    "toggle_followups_pause", "toggle_pause", "toggle_warmup", "update_listener",
+  ]);
 });

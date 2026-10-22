@@ -6,8 +6,9 @@
 //   run(args, call)    - does the work; `call(method, path, body, query)` hits the API.
 //                        Returns plain data; the MCP server wraps it as JSON text.
 //   cli                - { group, action } -> `scrapely <group> <action>`
-//   destructive        - true when it sends messages, launches/pauses campaigns,
-//                        removes data, spends credits or posts tweets (CLI asks first)
+//   destructive        - true when it sends messages, spends credits, posts tweets,
+//                        launches, pauses or removes things, or overwrites live
+//                        campaign settings or tags (the CLI asks before running it)
 
 import { z } from "zod";
 
@@ -125,6 +126,7 @@ const accountTools = [
     },
     run: ({ account_id, tags }, call) => call("PUT", "/accounts/tags", { account_id, tags }),
     cli: { group: "tags", action: "set" },
+    destructive: true,
   },
   {
     name: "update_account_tags",
@@ -151,6 +153,7 @@ const accountTools = [
     },
     run: ({ account_id, warmup_enabled }, call) => call("PATCH", "/accounts/warmup", { account_id, warmup_enabled }),
     cli: { group: "accounts", action: "warmup" },
+    destructive: true,
   },
 ];
 
@@ -189,6 +192,7 @@ const scrapingTools = [
       return call("POST", "/scraping-sources", body);
     },
     cli: { group: "sources", action: "create" },
+    destructive: true,
   },
   {
     name: "check_scraping_status",
@@ -518,6 +522,7 @@ function campaignTools(hosted) {
       },
       run: (args, call) => call("POST", "/campaigns/settings", { ...args }),
       cli: { group: "campaigns", action: "update" },
+      destructive: true,
     },
     {
       name: "list_campaigns",
@@ -665,6 +670,7 @@ const listenerTools = [
       return call("PATCH", "/follower-listeners", body);
     },
     cli: { group: "listeners", action: "update" },
+    destructive: true,
   },
   {
     name: "get_listener_events",
