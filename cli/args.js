@@ -179,6 +179,8 @@ export async function parseToolArgs(tool, argv, commandName) {
 
   const result = z.object(tool.inputs).safeParse(args);
   if (!result.success) throw new UsageError(validationMessage(result.error, fields, args), commandName);
+  const problem = tool.cli.validate?.(result.data);
+  if (problem) throw new UsageError(problem, commandName);
 
   const globals = { json: values.json, yes: values.yes, debug: values.debug };
   return { args: result.data, globals };

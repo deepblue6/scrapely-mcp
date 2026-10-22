@@ -5,12 +5,18 @@
 //   inputs             - zod raw shape, used for MCP schemas and CLI flags/validation
 //   run(args, call)    - does the work; `call(method, path, body, query)` hits the API.
 //                        Returns plain data; the MCP server wraps it as JSON text.
-//   cli                - { group, action } -> `scrapely <group> <action>`
+//   cli                - { group, action } -> `scrapely <group> <action>`, plus optional
+//                        validate(args): a message (in CLI flag terms) when the input
+//                        can't work, checked before asking or calling the API
 //   destructive        - true when it sends messages, spends credits, posts tweets,
 //                        launches, pauses or removes things, or overwrites live
 //                        campaign settings or tags (the CLI asks before running it)
 
+import { accessSync, constants } from "node:fs";
 import { z } from "zod";
+
+// Statuses get_campaign_leads documents (the API filters by any string and returns nothing for others).
+const LEAD_STATUSES = ["pending", "completed", "dms_closed", "already_contacted", "blocklisted", "needs_verified_sender", "failed"];
 
 const MEDIA_URL_HINT = "Image to attach: a media_url from upload_media (recommended), or any public image link. Outside links are downloaded when each DM sends; if one stops working, that DM goes out without the image.";
 
@@ -51,7 +57,11 @@ const accountTools = [
       if (handle) body.handle = handle;
       return call("DELETE", "/accounts", body);
     },
-    cli: { group: "accounts", action: "remove" },
+    cli: {
+      group: "accounts",
+      action: "remove",
+      validate: ({ account_id, handle }) => (account_id || handle ? null : "Pass --account-id or --handle to say which account to remove."),
+    },
     destructive: true,
   },
   {
@@ -283,7 +293,23 @@ function uploadMediaTool(hosted) {
       }
       return call("POST", "/media/upload", body);
     },
-    cli: { group: "media", action: "upload" },
+    cli: {
+      group: "media",
+      action: "upload",
+      validate: ({ url, base64, file_path }) => {
+        if ([url, base64, file_path].filter(Boolean).length !== 1) {
+          return `Pass exactly one of --url, --base64${hosted ? "" : " or --file-path"}.`;
+        }
+        if (file_path) {
+          try {
+            accessSync(file_path, constants.R_OK);
+          } catch (err) {
+            return `--file-path: couldn't read ${file_path} (${err.code || err.message}).`;
+          }
+        }
+        return null;
+      },
+    },
   };
 }
 
@@ -422,7 +448,12 @@ function campaignTools(hosted) {
       },
       run: ({ campaign_name, ...params }, call) =>
         call("GET", `/campaigns/${encodeURIComponent(campaign_name)}/leads`, null, params),
-      cli: { group: "campaigns", action: "leads" },
+      cli: {
+        group: "campaigns",
+        action: "leads",
+        validate: ({ status }) =>
+          (status === undefined || LEAD_STATUSES.includes(status) ? null : `--status must be one of: ${LEAD_STATUSES.join(", ")} (got "${status}").`),
+      },
     },
     {
       name: "add_leads_to_campaign",
@@ -469,7 +500,12 @@ function campaignTools(hosted) {
         }
         return summary;
       },
-      cli: { group: "campaigns", action: "add-leads" },
+      cli: {
+        group: "campaigns",
+        action: "add-leads",
+        validate: ({ twitter_handles, leads }) =>
+          (leads?.length || twitter_handles?.length ? null : "Pass --twitter-handles or --leads (a JSON list) with the leads to add."),
+      },
       destructive: true,
     },
     {

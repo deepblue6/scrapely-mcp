@@ -120,3 +120,13 @@ test("passing both --flag and --no-flag is a usage error", async () => {
   await usageError(parse("toggle_warmup", ["--account-id", "a", "--warmup-enabled", "--no-warmup-enabled"]),
     /Use either --warmup-enabled or --no-warmup-enabled, not both/);
 });
+
+test("tool input rules are usage errors in flag terms, checked before anything runs", async () => {
+  await usageError(parse("upload_media", []), /Pass exactly one of --url, --base64 or --file-path/);
+  await usageError(parse("upload_media", ["--url", "https://x/y.png", "--base64", "AAAA"]), /exactly one/);
+  await usageError(parse("upload_media", ["--file-path", "/does/not/exist.gif"]), /--file-path: couldn't read \/does\/not\/exist\.gif \(ENOENT\)/);
+  await usageError(parse("add_leads_to_campaign", ["--campaign-name", "c"]), /Pass --twitter-handles or --leads/);
+  await usageError(parse("remove_account", []), /Pass --account-id or --handle/);
+  await usageError(parse("get_campaign_leads", ["--campaign-name", "c", "--status", "replied"]), /--status must be one of: pending, completed/);
+  assert.equal((await parse("get_campaign_leads", ["--campaign-name", "c", "--status", "failed"])).args.status, "failed");
+});

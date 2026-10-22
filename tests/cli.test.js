@@ -220,6 +220,14 @@ test("api merges a query string in the path with --query", async () => {
   assert.deepEqual(sentTo("GET", "/campaigns").at(-1).query, { limit: "5", offset: "2" });
 });
 
+test("input rules are checked before the confirmation and exit 2", async () => {
+  const { code, stderr } = await cli(["accounts", "remove", "--yes"]);
+  assert.equal(code, 2);
+  assert.match(stderr, /Pass --account-id or --handle/);
+  assert.doesNotMatch(stderr, /About to run/);
+  assert.equal(sentTo("DELETE", "/accounts").length, 0);
+});
+
 test("typos get a suggestion and exit 2", async () => {
   const group = await cli(["campains", "list"]);
   assert.equal(group.code, 2);
