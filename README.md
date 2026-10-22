@@ -107,7 +107,7 @@ scrapely profiles list              # names, masked keys, which one is the defau
 scrapely profiles remove bitvault
 ```
 
-The key used is, first match wins: `--profile`, `SCRAPELY_API_KEY`, `SCRAPELY_PROFILE` (a profile name), the default profile, then the profile named `default`. Commands that change things show the profile in their "Continue?" question, so you always know which workspace you're about to change.
+The key used is, first match wins: `--profile`, `SCRAPELY_API_KEY`, `SCRAPELY_PROFILE` (a profile name), the default profile, then a profile named `default` if it is the only one. Commands that change things show the profile in their "Continue?" question (and print it when you pass `--yes`), so you always know which workspace you're changing. When `SCRAPELY_API_KEY` is set while you have saved profiles, every command prints a note saying it is being used instead.
 
 ### Use with AI agents (Claude Code, Codex, Cursor)
 
@@ -121,6 +121,7 @@ It writes a Claude Code skill to `~/.claude/skills/scrapely/SKILL.md` and a Scra
 
 - `--claude` or `--agents-md` writes just one of them; `--project` puts the skill in this project's `.claude/skills` instead of your home folder.
 - `--print` shows the instructions without writing anything.
+- A `SKILL.md` you wrote yourself is never replaced unless you add `--force`.
 
 The instructions tell your agent to check `scrapely whoami` first, to ask you to run `scrapely login` yourself (never to paste a key into the chat), to use `--json`, and to get your explicit OK before anything that sends, spends, launches, pauses or deletes. For agencies, they tell it to pick the workspace with `--profile <name>` and always say which profile it used. Then try asking your agent: "show me my Scrapely campaigns".
 
