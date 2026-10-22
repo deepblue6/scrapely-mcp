@@ -8,7 +8,9 @@ import { CliError, UsageError } from "./errors.js";
 import { printResult } from "./output.js";
 import { confirm, readStdin } from "./prompt.js";
 import { commandName } from "./registry.js";
-import { colors, truncate } from "./style.js";
+import { describeInputs } from "./schema.js";
+import { colors, stripControl, truncate } from "./style.js";
+import { cliText } from "./wording.js";
 
 const METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"];
 
@@ -18,13 +20,24 @@ function requireKey() {
   return active.key;
 }
 
-// name="Launch", lead_source_ids=[2 items]: what the confirmation shows.
-function summarizeArgs(args) {
+const isPlainWord = (text) => /^[\w@.:/+-]+$/.test(text);
+
+// --name "October launch"  --lead-source-ids a1,b2  --leads [120 items]: what the confirmation shows.
+function summarizeArgs(args, tool) {
+  const flagFor = Object.fromEntries(describeInputs(tool.inputs).map((f) => [f.key, f.flag]));
   return Object.entries(args).map(([key, value]) => {
-    if (Array.isArray(value)) return `${key}=[${value.length} item${value.length === 1 ? "" : "s"}]`;
-    if (value && typeof value === "object") return `${key}={...}`;
-    return `${key}=${truncate(JSON.stringify(value), 40)}`;
-  }).join(", ");
+    const flag = `--${flagFor[key] || key}`;
+    if (typeof value === "boolean") return value ? flag : flag.replace(/^--/, "--no-");
+    if (value === null) return flag.replace(/^--/, "--no-");
+    if (Array.isArray(value)) {
+      const joined = value.every((v) => typeof v !== "object") ? value.join(",") : "";
+      if (joined && joined.length <= 40) return `${flag} ${isPlainWord(joined) ? joined : JSON.stringify(joined)}`;
+      return `${flag} [${value.length} item${value.length === 1 ? "" : "s"}]`;
+    }
+    if (typeof value === "object") return `${flag} {...}`;
+    const text = truncate(stripControl(String(value)).replace(/\s+/g, " "), 40);
+    return `${flag} ${isPlainWord(text) ? text : JSON.stringify(text)}`;
+  }).join("  ");
 }
 
 export async function runTool(tool, argv) {
@@ -34,8 +47,9 @@ export async function runTool(tool, argv) {
 
   if (tool.destructive) {
     const c = colors(process.stderr);
-    const details = summarizeArgs(args);
-    const summary = `${c.yellow("About to run")} ${c.bold(`scrapely ${name}`)}: ${tool.description.split(/(?<=\.)\s+(?=[A-Z])/)[0]}` +
+    const details = summarizeArgs(args, tool);
+    const what = cliText(tool.description.split(/(?<=\.)\s+(?=[A-Z])/)[0]);
+    const summary = `${c.yellow("About to run")} ${c.bold(`scrapely ${name}`)}: ${what}` +
       (details ? `\n  ${details}` : "");
     await confirm(summary, { yes: globals.yes, commandName: name });
   }
