@@ -9,6 +9,10 @@ const LONG_URL = "https://hooks.example.com/scrapely/a-very-long-path-that-shoul
 const SECRET = "my-super-secret-webhook-key-123";
 const GENERATED = "whk_Zm9vYmFyYmF6cXV4MTIzNDU2Nzg5MGFiY2RlZmdoaWo";
 
+// Response shapes copied from the API handlers (pages/api/v1/webhooks/*.js in the app repo).
+const KEY_NOTE = "Save this key now. It will not be shown again.";
+const withKey = (body, generated) => (generated ? { ...body, key: GENERATED, note: KEY_NOTE } : body);
+
 let api;
 before(async () => {
   api = await startMockApi({
@@ -19,20 +23,19 @@ before(async () => {
         { url: LONG_URL, has_key: true, key_preview: "…k123" },
         { url: "https://93.184.215.14/hook", has_key: false, key_preview: null },
       ],
-      events: [{ event: "new_reply", description: "First reply from a lead" }],
+      events: [{ name: "new_reply", description: "First reply from a lead" }],
     },
     "POST /webhooks": ({ body }) => ({
       status: 201,
-      body: {
-        success: true,
-        webhook: { url: body.url, has_key: Boolean(body.key || body.generate_key), key_preview: body.generate_key ? "…hij" : null },
-        ...(body.generate_key ? { key: GENERATED } : {}),
-      },
+      body: withKey(
+        { webhook: { url: body.url, has_key: Boolean(body.key || body.generate_key), key_preview: body.generate_key ? "…hij" : null } },
+        body.generate_key,
+      ),
     }),
     "PATCH /webhooks": ({ body }) => ({
-      body: { success: true, webhook: { url: body.url, has_key: !body.remove_key, key_preview: body.remove_key ? null : "…0000" } },
+      body: withKey({ webhook: { url: body.url, has_key: !body.remove_key, key_preview: body.remove_key ? null : "…0000" } }, body.generate_key),
     }),
-    "DELETE /webhooks": { success: true, message: "Webhook removed" },
+    "DELETE /webhooks": ({ body }) => ({ body: { success: true, url: body.url } }),
     "PATCH /webhooks/settings": ({ body }) => ({ body: { enabled: body.enabled ?? true, all_replies: body.all_replies ?? false, webhooks: [], events: [] } }),
     "POST /webhooks/test": { results: [{ url: "https://93.184.215.14/hook", ok: true, status: 200 }] },
   });
@@ -55,7 +58,8 @@ test("webhooks list: settings first, then URL and KEY columns, URLs never cut", 
   assert.match(stdout, /…k123/);
   assert.match(stdout, /93\.184\.215\.14\/hook\s+none/);
   assert.doesNotMatch(stdout, /HAS KEY/);
-  assert.match(stdout, /new_reply/);
+  assert.match(stdout, /^ {2}NAME\s+DESCRIPTION$/m);
+  assert.match(stdout, /new_reply\s+First reply from a lead/);
 });
 
 test("webhooks add sends the URL and key, without asking first", async () => {
@@ -131,7 +135,8 @@ test("webhooks remove asks first, then sends DELETE with the URL", async () => {
 
   const { code, stdout } = await cli(["webhooks", "remove", "--url", LONG_URL, "--yes"]);
   assert.equal(code, 0);
-  assert.match(stdout, /Webhook removed/);
+  assert.match(stdout, /^success\s+yes$/m);
+  assert.ok(stdout.includes(LONG_URL));
   assert.deepEqual(sentTo("DELETE", "/webhooks").at(-1).body, { url: LONG_URL });
 });
 
