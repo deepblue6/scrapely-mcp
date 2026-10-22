@@ -10,6 +10,8 @@
 //                        can't work, checked before asking or calling the API;
 //                        description: replaces the MCP description in CLI help, for
 //                        the rare one that can't be reworded automatically;
+//                        example: the flags for the help's example, when the
+//                        generated one (required flags only) wouldn't work as is;
 //                        summary: one line for `scrapely <group> --help`, when the
 //                        description's first sentence doesn't fit the CLI;
 //                        defaults: { input: value } so a flag can be left out;
@@ -67,6 +69,7 @@ const accountTools = [
     cli: {
       group: "accounts",
       action: "remove",
+      example: "--handle acme_sales",
       validate: ({ account_id, handle }) => (account_id || handle ? null : "Pass --account-id or --handle to say which account to remove."),
     },
     destructive: true,
@@ -313,6 +316,7 @@ function uploadMediaTool(hosted) {
     cli: {
       group: "media",
       action: "upload",
+      example: hosted ? "--url https://example.com/banner.png" : "--file-path ./banner.png",
       description: `Upload an image to attach to campaign DMs or follow-ups. Pass exactly one of --url, --base64${hosted ? "" : " or --file-path"}. Prints a media_url: use it as "media_url" in --message-variants or --followups of scrapely campaigns launch, launch-import or update. JPEG, PNG, GIF or WebP, up to 5MB.`,
       validate: ({ url, base64, file_path }) => {
         if ([url, base64, file_path].filter(Boolean).length !== 1) {
@@ -363,7 +367,11 @@ function campaignTools(hosted) {
         send_days: z.array(z.number()).optional().describe("Days of week to send (0=Sun, 1=Mon, ..., 6=Sat)"),
       },
       run: (args, call) => call("POST", "/campaigns", { ...args }),
-      cli: { group: "campaigns", action: "launch" },
+      cli: {
+        group: "campaigns",
+        action: "launch",
+        example: '--name "Agency owners" --lead-source-ids <lead-source-id> --message "Hey {{firstName}}, quick question"',
+      },
       destructive: true,
     },
     {
@@ -439,7 +447,11 @@ function campaignTools(hosted) {
 
         return summary;
       },
-      cli: { group: "campaigns", action: "launch-import" },
+      cli: {
+        group: "campaigns",
+        action: "launch-import",
+        example: '--name "Webinar leads" --leads @leads.json --message "Hi {{firstName}}, thanks for joining"',
+      },
       destructive: true,
     },
     {
@@ -526,6 +538,7 @@ function campaignTools(hosted) {
       cli: {
         group: "campaigns",
         action: "add-leads",
+        example: '--campaign-name "Agency owners" --twitter-handles jack,naval',
         validate: ({ twitter_handles, leads }) =>
           (leads?.length || twitter_handles?.length ? null : "Pass --twitter-handles or --leads (a JSON list) with the leads to add."),
       },
@@ -647,7 +660,11 @@ const conversationTools = [
     },
     run: ({ conversation_id, message, account_id }, call) =>
       call("POST", "/dm/send", { conversation_id, message, account_id }),
-    cli: { group: "dm", action: "send" },
+    cli: {
+      group: "dm",
+      action: "send",
+      example: '--conversation-id <conversation-id> --account-id <account-id> --message "Thanks, talk soon!"',
+    },
     destructive: true,
   },
   {

@@ -53,3 +53,16 @@ test("pause commands pause by default, and resume commands exist", async () => {
     assert.equal(sent.at(-1)[2][key], false);
   }
 });
+
+test("every help example parses (apart from files and placeholders)", async () => {
+  const { commands, commandName } = await import("../cli/registry.js");
+  const { commandHelp } = await import("../cli/help.js");
+  const { parseToolArgs } = await import("../cli/args.js");
+  for (const command of commands) {
+    const line = commandHelp(command).split("Example\n")[1].split("\n")[0].trim();
+    const words = line.match(/"[^"]*"|\S+/g).map((w) => w.replace(/^"|"$/g, "")).slice(3);
+    if (words.some((w) => w.startsWith("@") || w === "--file-path")) continue; // reads a file
+    const name = commandName(command);
+    await assert.doesNotReject(parseToolArgs(command, words, name), `${name}: ${line}`);
+  }
+});

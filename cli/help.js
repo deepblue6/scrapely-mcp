@@ -81,19 +81,29 @@ function fieldNotes(field, schema, tool) {
   return notes;
 }
 
-function exampleValue(field) {
+// A week from now at 09:00 UTC, for fields that must be in the future.
+function futureTimestamp() {
+  const date = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  return `${date.toISOString().slice(0, 10)}T09:00:00Z`;
+}
+
+function exampleValue(field, tool) {
   const key = field.key.toLowerCase();
   switch (field.kind) {
     case "number": return "10";
     case "enum": return field.values[0];
-    case "list": return field.itemKind === "number" ? "1,2,3" : (key.includes("handle") ? "jack,naval" : "abc123,def456");
+    case "list":
+      if (field.itemKind === "number") return "1,2,3";
+      return key.includes("handle") ? "jack,naval" : `<${field.flag.replace(/s$/, "")}>`;
     case "json": return "@data.json";
     default:
-      if (key === "id" || key.endsWith("_id")) return "abc123";
+      if (key === "id") return `<${tool.cli.group.replace(/s$/, "")}-id>`;
+      if (key.endsWith("_id")) return `<${field.flag}>`;
       if (key.includes("handle")) return "jack";
       if (key === "proxy_auth") return "user:pass";
       if (key === "proxy") return "http://1.2.3.4:8080";
       if (key.includes("pin")) return "1234";
+      if (key === "scheduled_at") return futureTimestamp();
       if (key.includes("date") || key.endsWith("_at") || key === "since" || key === "until") return "2026-01-01";
       if (key.includes("name")) return '"My campaign"';
       return '"..."';
@@ -101,8 +111,9 @@ function exampleValue(field) {
 }
 
 function example(tool, fields) {
+  if (tool.cli.example) return `scrapely ${commandName(tool)} ${tool.cli.example}`;
   const required = fields.filter((f) => !f.optional);
-  const parts = required.map((f) => (f.kind === "boolean" ? `--${f.flag}` : `--${f.flag} ${exampleValue(f)}`));
+  const parts = required.map((f) => (f.kind === "boolean" ? `--${f.flag}` : `--${f.flag} ${exampleValue(f, tool)}`));
   return `scrapely ${commandName(tool)} ${parts.join(" ")}`.trim();
 }
 
