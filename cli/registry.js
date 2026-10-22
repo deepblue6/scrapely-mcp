@@ -28,12 +28,13 @@ export const GROUPS = {
 export const BUILTINS = {
   login: "Save your API key on this computer",
   logout: "Remove the saved API key",
-  whoami: "Show which API key is in use",
+  whoami: "Show which API key and profile are in use",
+  profiles: "Switch between workspaces: list, use, remove saved keys",
   api: "Call any API endpoint directly (advanced)",
   help: "Show help for a command",
 };
 
-export const BUILTIN_ALIASES = { status: "whoami" };
+export const BUILTIN_ALIASES = { status: "whoami", profile: "profiles" };
 
 // Words people try that mean an existing action ("campaigns unpause" -> resume).
 export const ACTION_SYNONYMS = {

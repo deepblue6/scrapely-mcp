@@ -93,7 +93,21 @@ Create an API key at [app.scrapely.co/settings/integrations](https://app.scrapel
 - The key is saved in `~/.config/scrapely/config.json` (`%APPDATA%\scrapely\config.json` on Windows), and only your user can read that file.
 - `scrapely whoami` shows which key is in use (only its last 4 characters) and where it comes from.
 - `scrapely logout` removes the saved key.
-- In scripts and CI you can skip `login` and set the `SCRAPELY_API_KEY` environment variable instead. When it is set, it always wins over the saved key.
+- In scripts and CI you can skip `login` and set the `SCRAPELY_API_KEY` environment variable instead. When it is set, it wins over saved keys (unless you pass `--profile`).
+
+### Several workspaces (agencies)
+
+Save one key per workspace under a profile name, then pick it per command or make it the default:
+
+```bash
+scrapely login --profile bitvault
+scrapely campaigns list --profile bitvault
+scrapely profiles use bitvault      # use it by default
+scrapely profiles list              # names, masked keys, which one is the default
+scrapely profiles remove bitvault
+```
+
+The key used is, first match wins: `--profile`, `SCRAPELY_API_KEY`, `SCRAPELY_PROFILE` (a profile name), the default profile, then the profile named `default`. Commands that change things show the profile in their "Continue?" question, so you always know which workspace you're about to change.
 
 ### Your first 5 minutes
 
@@ -221,7 +235,7 @@ scrapely api POST /campaigns/pause --data '{"campaign_name":"Agency owners","is_
 | `scrapely webhooks info` | Get documentation for webhook events and payload structure |  |
 | `scrapely feedback send` | Report a bug or a confusing tool to the Scrapely team |  |
 
-Plus `scrapely login`, `scrapely logout`, `scrapely whoami`, `scrapely api` and `scrapely help`. Run any command with `--help` to see all of its options.
+Plus `scrapely login`, `scrapely logout`, `scrapely whoami`, `scrapely profiles`, `scrapely api` and `scrapely help`. Run any command with `--help` to see all of its options.
 
 ## Available Tools
 

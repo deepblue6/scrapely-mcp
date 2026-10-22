@@ -16,6 +16,34 @@ export const GLOBAL_OPTIONS = {
   help: { type: "boolean", short: "h" },
 };
 
+// Takes the global --profile <name> / --profile=<name> out of argv, wherever it is,
+// so every command accepts it. Stops at "--" (everything after it is a value).
+export function takeProfileFlag(argv) {
+  const rest = [];
+  let profile;
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === "--") {
+      rest.push(...argv.slice(i));
+      break;
+    }
+    let value;
+    if (arg === "--profile") {
+      value = argv[++i];
+      if (value === undefined || value.startsWith("-")) throw new UsageError("--profile needs a value, e.g. --profile bitvault.");
+    } else if (arg.startsWith("--profile=")) {
+      value = arg.slice("--profile=".length);
+      if (!value) throw new UsageError("--profile needs a value, e.g. --profile bitvault.");
+    } else {
+      rest.push(arg);
+      continue;
+    }
+    if (profile !== undefined && profile !== value) throw new UsageError("--profile was given twice with different names.");
+    profile = value;
+  }
+  return { profile, argv: rest };
+}
+
 // Runs parseArgs, rewording its errors for humans.
 export function parseFlags(argv, options, commandName) {
   try {

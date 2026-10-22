@@ -6,9 +6,10 @@
 
 import { readFileSync } from "node:fs";
 import { login, logout, whoami } from "./cli/auth.js";
-import { parseFlags } from "./cli/args.js";
+import { parseFlags, takeProfileFlag } from "./cli/args.js";
 import { UsageError, describeError } from "./cli/errors.js";
-import { apiHelp, commandHelp, groupHelp, loginHelp, rootHelp } from "./cli/help.js";
+import { apiHelp, commandHelp, groupHelp, loginHelp, profilesHelp, rootHelp, whoamiHelp } from "./cli/help.js";
+import { runProfiles } from "./cli/profiles.js";
 import { ACTION_SYNONYMS, BUILTINS, BUILTIN_ALIASES, allCommandNames, findTool, groupNames, groupTools } from "./cli/registry.js";
 import { runApi, runTool } from "./cli/run.js";
 import { closest } from "./cli/suggest.js";
@@ -58,6 +59,8 @@ function help(words) {
   if (!group) return print(rootHelp(version));
   if (group === "api") return print(apiHelp());
   if (group === "login") return print(loginHelp());
+  if (group === "profiles" || group === "profile") return print(profilesHelp());
+  if (group === "whoami" || group === "status") return print(whoamiHelp());
   if (!groupNames().includes(group)) throw unknownCommand(words);
   if (!action) return print(groupHelp(group));
   const tool = findTool(group, action);
@@ -65,7 +68,7 @@ function help(words) {
   print(commandHelp(tool));
 }
 
-async function main(argv) {
+async function main(argv, profile) {
   const [rawFirst, second, ...rest] = argv;
   if (!rawFirst || rawFirst === "--help" || rawFirst === "-h") return print(rootHelp(version));
   if (rawFirst === "--version" || rawFirst === "-v") return print(version);
@@ -77,16 +80,20 @@ async function main(argv) {
     case "help":
       return help(afterFirst);
     case "api":
-      return wantsHelp(afterFirst) ? print(apiHelp()) : runApi(afterFirst);
+      return wantsHelp(afterFirst) ? print(apiHelp()) : runApi(afterFirst, { profile });
     case "login": {
       if (wantsHelp(afterFirst)) return print(loginHelp());
       const { values } = parseFlags(afterFirst, { key: { type: "string" }, debug: { type: "boolean" } }, "login");
-      return login(values);
+      return login({ ...values, profile });
     }
     case "logout":
-      return wantsHelp(afterFirst) ? print("scrapely logout\n\nRemove the API key saved by scrapely login.") : logout();
+      return wantsHelp(afterFirst)
+        ? print("scrapely logout [--profile <name>]\n\nRemove the API key saved by scrapely login (from the default profile, or the one you name).")
+        : logout({ profile });
     case "whoami":
-      return wantsHelp(afterFirst) ? print("scrapely whoami (or: scrapely status)\n\nShow which API key is in use and where it comes from.") : whoami();
+      return wantsHelp(afterFirst) ? print(whoamiHelp()) : whoami({ profile });
+    case "profiles":
+      return !second || wantsHelp(afterFirst) ? print(profilesHelp()) : runProfiles(afterFirst, { profile });
   }
 
   if (!groupNames().includes(first)) throw unknownCommand(argv);
@@ -95,7 +102,7 @@ async function main(argv) {
   const tool = findTool(first, second);
   if (!tool) throw unknownCommand(argv);
   if (wantsHelp(rest)) return print(commandHelp(tool));
-  return runTool(tool, rest);
+  return runTool(tool, rest, { profile });
 }
 
 // `scrapely --json campaigns list` works like `scrapely campaigns list --json`.
@@ -106,13 +113,18 @@ function globalsLast(args) {
   return [...args.slice(n), ...args.slice(0, n)];
 }
 
-const argv = globalsLast(process.argv.slice(2));
+const rawArgv = process.argv.slice(2);
 
-main(argv).catch((err) => {
+function start() {
+  const { profile, argv } = takeProfileFlag(rawArgv);
+  return main(globalsLast(argv), profile);
+}
+
+Promise.resolve().then(start).catch((err) => {
   const c = colors(process.stderr);
   const { message, exitCode } = describeError(err);
   process.stderr.write(`${c.red("Error:")} ${message}\n`);
-  if (argv.includes("--debug")) {
+  if (rawArgv.includes("--debug")) {
     process.stderr.write(`\n${err.stack}\n`);
     if (err.data !== undefined) process.stderr.write(`\nResponse: ${JSON.stringify(err.data, null, 2)}\n`);
   }

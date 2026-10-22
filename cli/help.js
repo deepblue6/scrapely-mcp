@@ -8,6 +8,7 @@ import { cliText, fieldText, findWith } from "./wording.js";
 const GLOBAL_FLAGS = [
   ["--json", "Print raw JSON instead of tables"],
   ["-y, --yes", "Don't ask \"Continue?\" before commands that change things"],
+  ["--profile <name>", "Use the API key saved under this profile (see scrapely profiles)"],
   ["--debug", "Show technical details when something fails"],
   ["-h, --help", "Show help"],
 ];
@@ -185,7 +186,7 @@ export function commandHelp(tool) {
     out.push("", c.yellow("This sends, spends credits, launches, pauses, deletes or overwrites something in your account."),
       c.yellow("You'll be asked to confirm first; add --yes to skip the question."));
   }
-  out.push("", c.dim("Also: --json, --yes, --debug"));
+  out.push("", c.dim("Also: --json, --yes, --profile <name>, --debug"));
   return out.join("\n");
 }
 
@@ -225,6 +226,53 @@ export function loginHelp() {
     "  scrapely login --key <key> Pass the key directly (less safe: it stays in",
     "                             your shell history and shows up in ps)",
     "",
+    "Several workspaces? Save each key under a profile name:",
+    "  scrapely login --profile bitvault",
+    "  scrapely campaigns list --profile bitvault",
+    "The first key you save becomes the default. See: scrapely profiles --help",
+    "",
     "Create a key at https://app.scrapely.co/settings/integrations",
+  ].join("\n");
+}
+
+export function whoamiHelp() {
+  return [
+    "scrapely whoami [--profile <name>]   (or: scrapely status)",
+    "",
+    "Show which API key is in use (masked), which profile it belongs to and where it comes from.",
+    "",
+    "Which key is used, first match wins:",
+    "  1. --profile <name>",
+    "  2. the SCRAPELY_API_KEY environment variable",
+    "  3. the SCRAPELY_PROFILE environment variable (a profile name)",
+    "  4. the default profile (set with: scrapely profiles use <name>)",
+    "  5. the profile named \"default\"",
+  ].join("\n");
+}
+
+export function profilesHelp() {
+  const c = colors(process.stdout);
+  return [
+    c.bold("scrapely profiles"),
+    "",
+    "Keep one API key per Scrapely workspace and switch between them.",
+    "Profile names: lowercase letters, digits, - and _ (up to 32).",
+    "",
+    c.bold("Commands"),
+    rows([
+      ["list", "Show saved profiles (keys are masked) and which one is the default"],
+      ["use <name>", "Make a profile the default"],
+      ["remove <name> *", "Remove a saved profile from this computer"],
+    ], c, 14),
+    "",
+    c.dim("* asks you to confirm first; add --yes to skip the question"),
+    "",
+    c.bold("Examples"),
+    "  scrapely login --profile bitvault          Save a key as profile bitvault",
+    "  scrapely campaigns list --profile bitvault Run one command with it",
+    "  scrapely profiles use bitvault             Use it for every command",
+    "  SCRAPELY_PROFILE=bitvault scrapely ...     Pick a profile from the environment",
+    "",
+    "Run scrapely whoami to see which key and profile are in use.",
   ].join("\n");
 }
