@@ -2,8 +2,22 @@
 
 export const DEFAULT_API_BASE = "https://app.scrapely.co/api/v1";
 
+const LOOPBACK_HOSTS = ["localhost", "127.0.0.1", "[::1]"];
+
 // SCRAPELY_API_BASE exists only so tests can point at a local mock server.
-export const API_BASE = process.env.SCRAPELY_API_BASE || DEFAULT_API_BASE;
+// Anything other than localhost is ignored, so a stray setting can't send API keys elsewhere.
+function pickApiBase(value) {
+  if (!value) return DEFAULT_API_BASE;
+  try {
+    if (LOOPBACK_HOSTS.includes(new URL(value).hostname)) return value.replace(/\/+$/, "");
+  } catch {
+    // not a URL: fall through to the warning
+  }
+  process.stderr.write(`Warning: ignoring SCRAPELY_API_BASE=${value} (only localhost is allowed, for testing). Using ${DEFAULT_API_BASE}\n`);
+  return DEFAULT_API_BASE;
+}
+
+export const API_BASE = pickApiBase(process.env.SCRAPELY_API_BASE);
 
 const { origin: API_ORIGIN, pathname: API_PATH } = new URL(API_BASE);
 const MAX_REDIRECTS = 5;

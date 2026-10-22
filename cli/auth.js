@@ -1,13 +1,12 @@
 // scrapely login / logout / whoami
 
-import { API_BASE, ApiError, apiCall } from "../api.js";
+import { API_BASE, ApiError, DEFAULT_API_BASE, apiCall } from "../api.js";
 import { maskKey, removeApiKey, resolveApiKey, saveApiKey } from "./config.js";
 import { CliError } from "./errors.js";
 import { askHidden, isInteractive, readStdin } from "./prompt.js";
 import { colors } from "./style.js";
 
 export const KEYS_URL = "https://app.scrapely.co/settings/integrations";
-const DEFAULT_API_BASE = "https://app.scrapely.co/api/v1";
 
 async function readKey(flagKey) {
   if (flagKey) return flagKey.trim();

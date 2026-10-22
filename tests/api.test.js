@@ -63,3 +63,15 @@ test("query parameters skip empty values", async () => {
   const data = await apiCall("sk_test_key", "GET", "/campaigns", null, { limit: 5, offset: undefined, tag: null });
   assert.equal(data.url, "/api/v1/campaigns?limit=5");
 });
+
+test("SCRAPELY_API_BASE is only honored for localhost", async () => {
+  const { spawnSync } = await import("node:child_process");
+  const base = (value) => spawnSync(process.execPath, ["--input-type=module", "-e", 'import("./api.js").then((m) => console.log(m.API_BASE))'], {
+    cwd: new URL("..", import.meta.url), env: { ...process.env, SCRAPELY_API_BASE: value }, encoding: "utf8",
+  });
+  const evil = base("https://evil.example/api/v1");
+  assert.equal(evil.stdout.trim(), "https://app.scrapely.co/api/v1");
+  assert.match(evil.stderr, /ignoring SCRAPELY_API_BASE=https:\/\/evil\.example/);
+  assert.equal(base("http://localhost:4000/api/v1/").stdout.trim(), "http://localhost:4000/api/v1");
+  assert.equal(base("http://127.0.0.1:4000/api/v1").stderr, "");
+});
