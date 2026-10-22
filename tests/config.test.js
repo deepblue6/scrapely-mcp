@@ -1,13 +1,12 @@
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import { chmodSync, mkdirSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { readFileSync } from "node:fs";
 import {
   checkProfileName, configPath, describeActive, listProfiles, loadConfig, maskKey, removeApiKey, resolveApiKey,
   saveApiKey, setDefaultProfile, targetProfile,
 } from "../cli/config.js";
-import { UsageError } from "../cli/errors.js";
+import { CliError, UsageError } from "../cli/errors.js";
 import { tempHome } from "./helpers/run-cli.js";
 
 let home;
@@ -75,7 +74,7 @@ test("an existing world-readable config is replaced by a private one", { skip: p
   assert.equal(statSync(file).mode & 0o777, 0o600);
   assert.deepEqual(readdirSync(dir), ["config.json"], "no temp file left behind");
   assert.equal(removeApiKey().removed, true);
-  assert.deepEqual(onDisk(), { other: 1, profiles: {} });
+  assert.deepEqual(onDisk(), { other: 1 }, "no empty profiles object is left behind");
   assert.equal(statSync(file).mode & 0o777, 0o600, "other settings stay private too");
 });
 
@@ -129,11 +128,11 @@ test("key precedence: --profile > SCRAPELY_API_KEY > SCRAPELY_PROFILE > default_
   assert.deepEqual([byDefault.profile, byDefault.source], ["acme", "default profile"]);
   assert.equal(resolveApiKey("flagged").overridesEnv, false);
 
-  // Without a default_profile, the profile named "default" is used.
-  const config = onDisk();
-  delete config.default_profile;
-  writeFileSync(configPath(), JSON.stringify(config));
+  // Without a default_profile, a lone profile named "default" is used; with several, nothing is guessed.
+  writeOld({ profiles: { default: { api_key: KEY_A } } });
   assert.equal(resolveApiKey().key, KEY_A);
+  writeOld({ profiles: { default: { api_key: KEY_A }, bitvault: { api_key: KEY_B } } });
+  usageError(() => resolveApiKey(), /No default profile is set\. Saved profiles: bitvault, default/);
 });
 
 test("profile names must be lowercase letters, digits, - and _ (max 32)", () => {
@@ -191,4 +190,36 @@ test("listProfiles and describeActive never contain a full key", () => {
   assert.equal(describeActive(resolveApiKey("bitvault")), "Profile: bitvault (sk_live_…2222)");
   process.env.SCRAPELY_API_KEY = KEY_ENV;
   assert.equal(describeActive(resolveApiKey()), "Key: sk_live_…3333 from SCRAPELY_API_KEY (no profile)");
+});
+
+test("a config.json that can't be read is an error, and is never overwritten", () => {
+  const broken = '{"default_profile":"a","profiles":{"a":{"api_key":"sk_live_aaaa"},"b":{"api_key":"sk_live_bbbb"},}}';
+  writeOld({});
+  writeFileSync(configPath(), broken);
+  const unreadable = (err) => err instanceof CliError && /Can't read .*config\.json/.test(err.message) && !/sk_live_/.test(err.message);
+  assert.throws(() => resolveApiKey(), unreadable);
+  assert.throws(() => listProfiles(), unreadable);
+  assert.throws(() => saveApiKey(KEY_A, "c"), unreadable);
+  assert.throws(() => removeApiKey("a"), unreadable);
+  assert.equal(readFileSync(configPath(), "utf8"), broken, "the saved keys are still there");
+
+  writeFileSync(configPath(), "[1,2]");
+  assert.throws(() => saveApiKey(KEY_A, "c"), unreadable);
+});
+
+test("an unreadable (chmod 000) config is never overwritten", { skip: process.platform === "win32" || process.getuid?.() === 0 }, () => {
+  saveApiKey(KEY_A, "acme");
+  chmodSync(configPath(), 0o000);
+  assert.throws(() => saveApiKey(KEY_B, "bitvault"), (err) => err instanceof CliError && /EACCES/.test(err.message));
+  chmodSync(configPath(), 0o600);
+  assert.deepEqual(onDisk().profiles, { acme: { api_key: KEY_A } });
+});
+
+test("a key an older CLI saved next to the profiles is kept as profile legacy", () => {
+  writeOld({ default_profile: "default", profiles: { default: { api_key: KEY_A } }, api_key: KEY_B });
+  assert.equal(resolveApiKey().key, KEY_A, "the default profile is still the default");
+  assert.equal(resolveApiKey("legacy").key, KEY_B);
+  saveApiKey(KEY_ENV, "acme");
+  assert.deepEqual(onDisk().profiles, { default: { api_key: KEY_A }, legacy: { api_key: KEY_B }, acme: { api_key: KEY_ENV } });
+  assert.equal(onDisk().api_key, undefined);
 });

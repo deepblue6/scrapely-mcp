@@ -15,7 +15,7 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { UsageError } from "./errors.js";
+import { CliError, UsageError } from "./errors.js";
 
 const PROFILE_NAME = /^[a-z0-9][a-z0-9_-]{0,31}$/;
 const isPlainObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
@@ -28,13 +28,19 @@ export function configPath() {
   return join(base, "scrapely", "config.json");
 }
 
+// {} when there is no file yet. A file that exists but can't be read or parsed is
+// an error, never "empty": the next save would overwrite every saved profile.
 export function readConfig() {
+  const file = configPath();
+  let data;
   try {
-    const data = JSON.parse(readFileSync(configPath(), "utf8"));
-    return isPlainObject(data) ? data : {};
-  } catch {
-    return {};
+    data = JSON.parse(readFileSync(file, "utf8"));
+  } catch (err) {
+    if (err.code === "ENOENT") return {};
+    throw new CliError(`Can't read ${file} (${err.code || err.message}). Your saved API keys are in it: fix the file, or move it away and run scrapely login again.`);
   }
+  if (!isPlainObject(data)) throw new CliError(`Can't read ${file} (it isn't a JSON object). Fix the file, or move it away and run scrapely login again.`);
+  return data;
 }
 
 // The config in the profiles shape, whichever shape is on disk. Unknown keys are kept.
@@ -42,6 +48,8 @@ export function loadConfig() {
   const { api_key, profiles, default_profile, ...rest } = readConfig();
   const config = { ...rest, profiles: isPlainObject(profiles) ? { ...profiles } : {} };
   if (api_key && !config.profiles.default) config.profiles.default = { api_key };
+  // An older (pre-profiles) CLI saved a key next to the profiles: keep it rather than drop it.
+  else if (api_key && config.profiles.default.api_key !== api_key && !config.profiles.legacy) config.profiles.legacy = { api_key };
   if (typeof default_profile === "string") config.default_profile = default_profile;
   else if (api_key) config.default_profile = "default";
   return config;
@@ -66,7 +74,7 @@ function writeConfig(config) {
   const dir = dirname(file);
   mkdirSync(dir, { recursive: true, mode: 0o700 });
   chmodSync(dir, 0o700);
-  writePrivate(file, config);
+  writePrivate(file, Object.keys(profiles).length ? config : rest);
   return file;
 }
 
@@ -160,9 +168,10 @@ export function resolveApiKey(flagProfile) {
   const envProfile = process.env.SCRAPELY_PROFILE?.trim();
   if (envProfile) return fromProfile(config, checkProfileName(envProfile, "SCRAPELY_PROFILE"), "SCRAPELY_PROFILE environment variable");
   if (config.default_profile) return fromProfile(config, config.default_profile, "default profile");
-  if (config.profiles.default) return fromProfile(config, "default", "default profile");
-
+  // A lone profile named "default" (e.g. written by hand) needs no default_profile. With several,
+  // never guess: after the default is removed, the user picks the next one.
   const saved = profileNames(config);
+  if (saved.length === 1 && saved[0] === "default") return fromProfile(config, "default", "default profile");
   if (saved.length) {
     throw new UsageError(`No default profile is set. Saved profiles: ${saved.join(", ")}. Pick one with: scrapely profiles use <name> (or pass --profile <name>)`, "profiles");
   }
