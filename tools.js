@@ -791,6 +791,11 @@ const WEBHOOK_KEY_HINT = "Your own secret. Scrapely sends it in the X-Webhook-Ke
 // The API's own "note" already says to save the key; this only adds where it goes.
 const GENERATED_KEY_NOTE = "Your endpoint receives this key in the X-Webhook-Key header of every event.";
 
+// Same limits as the API: sent as a header value, so printable ASCII only.
+const webhookKey = (text) =>
+  z.string().min(1).max(500).regex(/^[\x20-\x7E]+$/, "key may only contain printable characters (no line breaks)")
+    .optional().describe(`${text}. 1-500 printable characters, no line breaks`);
+
 // Shown after a command whose response carries a newly generated key.
 const generatedKeyNotice = (data) => (data && typeof data.key === "string" ? GENERATED_KEY_NOTE : null);
 
@@ -807,8 +812,8 @@ const webhookTools = [
     description: "Add a webhook URL. Scrapely will POST events (replies, DMs sent/seen, account disconnects, new followers) to it as JSON. Max 10 URLs. Optionally protect it with a key sent in the X-Webhook-Key header: pass your own key, or generate_key true to have Scrapely create a strong one. A generated key is returned once in this response and never shown again: save it, and show it to the user, right away.",
     inputs: {
       url: z.string().describe("Public http(s) URL that will receive events, e.g. https://hooks.example.com/scrapely"),
-      key: z.string().optional().describe(WEBHOOK_KEY_HINT),
-      generate_key: z.boolean().optional().describe("true to have Scrapely generate a strong key and return it once (instead of passing key)"),
+      key: webhookKey(`${WEBHOOK_KEY_HINT}. Can't be combined with generate_key`),
+      generate_key: z.boolean().optional().describe("true to have Scrapely generate a strong key and return it once (instead of passing your own key)"),
     },
     run: ({ url, key, generate_key }, call) => {
       const body = { url };
@@ -830,9 +835,9 @@ const webhookTools = [
     description: "Change, rotate or remove the X-Webhook-Key of an existing webhook URL. Pass exactly one of: key (your own new key), generate_key true (Scrapely generates one, returned once and never shown again) or remove_key true. The old key stops being sent immediately, so update your endpoint to accept the new one.",
     inputs: {
       url: z.string().describe(WEBHOOK_URL_HINT),
-      key: z.string().optional().describe("New key to send in the X-Webhook-Key header"),
-      generate_key: z.boolean().optional().describe("true to have Scrapely generate a new strong key and return it once"),
-      remove_key: z.boolean().optional().describe("true to stop sending an X-Webhook-Key header to this URL"),
+      key: webhookKey("New key to send in the X-Webhook-Key header. Use instead of generate_key or remove_key"),
+      generate_key: z.boolean().optional().describe("true to have Scrapely generate a new strong key and return it once. Use instead of passing your own key or remove_key"),
+      remove_key: z.boolean().optional().describe("true to stop sending an X-Webhook-Key header to this URL. Use instead of passing a key or generate_key"),
     },
     run: ({ url, key, generate_key, remove_key }, call) => {
       const body = { url };

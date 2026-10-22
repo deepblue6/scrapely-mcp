@@ -4,6 +4,7 @@ import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { GOOD_KEY, startMockApi } from "./helpers/mock-api.js";
 import { runCli } from "./helpers/run-cli.js";
+import { tools } from "../tools.js";
 
 const LONG_URL = "https://hooks.example.com/scrapely/a-very-long-path-that-should-never-be-cut/abcdef0123456789";
 const SECRET = "my-super-secret-webhook-key-123";
@@ -201,4 +202,23 @@ test("webhook URL flags say where to find the URL", async () => {
   }
   const media = await cli(["media", "upload", "--help"]);
   assert.doesNotMatch(media.stdout, /webhooks list/, "other --url flags are untouched");
+});
+
+test("the key schema has the API's limits, for MCP callers too", () => {
+  for (const name of ["add_webhook", "update_webhook_key"]) {
+    const key = tools.find((t) => t.name === name).inputs.key;
+    assert.ok(key.safeParse(SECRET).success, name);
+    assert.ok(key.safeParse(undefined).success, name);
+    for (const bad of ["", "a".repeat(501), "line\nbreak", "naïve"]) {
+      assert.equal(key.safeParse(bad).success, false, `${name}: ${JSON.stringify(bad)}`);
+    }
+  }
+});
+
+test("webhooks add refuses a key with a line break before calling the API", async () => {
+  const before = sentTo("POST", "/webhooks").length;
+  const { code, stderr } = await cli(["webhooks", "add", "--url", "https://93.184.215.14/x", "--key", "a\nb"]);
+  assert.equal(code, 2);
+  assert.match(stderr, /printable characters/);
+  assert.equal(sentTo("POST", "/webhooks").length, before);
 });
