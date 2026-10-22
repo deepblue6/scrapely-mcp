@@ -113,3 +113,13 @@ test("a list under a summary gets a heading and keeps its extra columns", () => 
   const accounts = show({ success: true, accounts: [{ account_id: "a1", handle: "acme", jobs: 250 }] });
   assert.match(accounts, /JOBS/);
 });
+
+test("webhook lists show the key preview, \"none\" without a key, and whole URLs", () => {
+  process.env.COLUMNS = "40";
+  const url = "https://hooks.example.com/" + "p".repeat(60);
+  const out = show({ webhooks: [{ url, has_key: true, key_preview: "…abcd" }, { url: "https://a.example", has_key: false, key_preview: null }] });
+  assert.match(out.split("\n")[0], /^URL\s+KEY$/);
+  assert.ok(out.includes(url));
+  assert.match(out, /https:\/\/a\.example\s+none/);
+  assert.match(out, /…abcd/);
+});
