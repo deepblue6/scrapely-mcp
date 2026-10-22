@@ -3,7 +3,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { agentGuide, withAgentsBlock, agentsBlock } from "../cli/agent-guide.js";
 import { commands } from "../cli/registry.js";
@@ -116,6 +116,27 @@ test("AGENTS.md: the block is added once, updated in place, and nothing else cha
   assert.equal(readFileSync(agentsMd(cwd), "utf8"), second);
 });
 
+test("a SKILL.md the user wrote is never replaced without --force", async () => {
+  const { home, run } = setup();
+  mkdirSync(join(home, ".claude", "skills", "scrapely"), { recursive: true });
+  writeFileSync(userSkill(home), "my own notes, custom\n");
+  const refused = await run(["--claude", "--yes"]);
+  assert.equal(refused.code, 1);
+  assert.match(refused.stderr, /wasn't written by scrapely setup-agent, so it was left alone\. Move it away, or pass --force/);
+  assert.equal(readFileSync(userSkill(home), "utf8"), "my own notes, custom\n");
+
+  assert.equal((await run(["--claude", "--print"])).code, 0, "--print still works");
+  const forced = await run(["--claude", "--yes", "--force"]);
+  assert.equal(forced.code, 0);
+  assert.match(readFileSync(userSkill(home), "utf8"), /^---\nname: scrapely\n/);
+
+  // A file this command wrote (older version) is refreshed without --force.
+  writeFileSync(userSkill(home), readFileSync(userSkill(home), "utf8").replace(/v\d+\.\d+\.\d+/, "v0.0.1"));
+  const refresh = await run(["--claude", "--yes"]);
+  assert.equal(refresh.code, 0);
+  assert.match(refresh.stdout, /Updated .*SKILL\.md/);
+});
+
 test("withAgentsBlock refuses a file with only one marker", () => {
   const block = agentsBlock(version);
   assert.equal(withAgentsBlock("intro\n<!-- scrapely:start -->\nhalf", block), null);
@@ -131,6 +152,7 @@ test("without a terminal it refuses to write unless --yes, and lists the files",
   assert.match(stderr, /create\s+.*SKILL\.md/);
   assert.match(stderr, /create\s+.*AGENTS\.md/);
   assert.match(stderr, /Re-run with --yes/);
+  assert.doesNotMatch(stderr, /--help/);
   assert.equal(existsSync(userSkill(home)), false);
   assert.equal(existsSync(agentsMd(cwd)), false);
 });

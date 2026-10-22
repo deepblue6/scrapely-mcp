@@ -295,6 +295,7 @@ export function setupAgentHelp() {
       ["--agents-md", "Only the AGENTS.md block"],
       ["--project", "Put the skill in this folder's .claude/skills instead of your home folder"],
       ["--print", "Print the instructions instead of writing anything"],
+      ["--force", "Replace a SKILL.md that scrapely setup-agent didn't write"],
       ["-y, --yes", "Don't ask before writing"],
     ], c, 14),
     "",

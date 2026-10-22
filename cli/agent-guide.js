@@ -7,6 +7,8 @@ import { BUILTINS, GROUPS, groupNames, groupTools } from "./registry.js";
 
 export const AGENTS_START = "<!-- scrapely:start -->";
 export const AGENTS_END = "<!-- scrapely:end -->";
+// In every file this command writes: a SKILL.md without it was written by someone else.
+export const WRITTEN_BY = 'Written by "scrapely setup-agent"';
 
 // Plain YAML scalar: no ": " or " #" in it, so it needs no quoting.
 const SKILL_DESCRIPTION =
@@ -29,7 +31,7 @@ export function agentGuide(version, level = 1) {
   return [
     h(0, "Scrapely CLI"),
     "",
-    `<!-- Written by "scrapely setup-agent" (scrapely-mcp v${version}). Run it again after upgrading to refresh. -->`,
+    `<!-- ${WRITTEN_BY} (scrapely-mcp v${version}). Run it again after upgrading to refresh. -->`,
     "",
     "Scrapely automates X/Twitter DM outreach: the user's connected X accounts send DM campaigns to leads",
     "(scraped from followers or imported from a list), with replies, CRM, follower listeners, a People",

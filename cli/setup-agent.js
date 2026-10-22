@@ -5,7 +5,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { agentsBlock, skillFile, withAgentsBlock, AGENTS_END, AGENTS_START } from "./agent-guide.js";
+import { agentsBlock, skillFile, withAgentsBlock, AGENTS_END, AGENTS_START, WRITTEN_BY } from "./agent-guide.js";
 import { parseFlags } from "./args.js";
 import { CliError, UsageError } from "./errors.js";
 import { confirm } from "./prompt.js";
@@ -16,6 +16,7 @@ const OPTIONS = {
   "agents-md": { type: "boolean" },
   project: { type: "boolean" },
   print: { type: "boolean" },
+  force: { type: "boolean" },
   yes: { type: "boolean", short: "y" },
   json: { type: "boolean" },
   debug: { type: "boolean" },
@@ -32,7 +33,12 @@ function plan(values, version) {
     const base = values.project ? process.cwd() : process.env.HOME || homedir();
     const file = join(base, ".claude", "skills", "scrapely", "SKILL.md");
     const content = skillFile(version);
-    targets.push({ kind: "claude", file, label: "Claude Code skill", before: readText(file), after: content, content });
+    const before = readText(file);
+    // Someone's own SKILL.md (no WRITTEN_BY line) is only replaced on request.
+    if (before !== null && !before.includes(WRITTEN_BY) && !values.force && !values.print) {
+      throw new CliError(`${file} wasn't written by scrapely setup-agent, so it was left alone. Move it away, or pass --force to replace it (--print shows the new text).`);
+    }
+    targets.push({ kind: "claude", file, label: "Claude Code skill", before, after: content, content });
   }
   if (both || values["agents-md"]) {
     const file = resolve("AGENTS.md");
