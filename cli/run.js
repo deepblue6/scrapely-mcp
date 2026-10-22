@@ -53,7 +53,7 @@ export async function runTool(tool, argv, { profile } = {}) {
   const { args, globals } = await parseToolArgs(tool, argv, name);
   const active = requireKey(profile);
 
-  if (tool.destructive) {
+  if (tool.destructive && !tool.cli.free?.(args)) {
     const c = colors(process.stderr);
     const details = summarizeArgs(args, tool);
     const what = cliText(tool.description.split(/(?<=\.)\s+(?=[A-Z])/)[0]);

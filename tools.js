@@ -15,6 +15,8 @@
 //                        summary: one line for `scrapely <group> --help`, when the
 //                        description's first sentence doesn't fit the CLI;
 //                        defaults: { input: value } so a flag can be left out;
+//                        free(args): true when this input of a destructive tool
+//                        spends and changes nothing, so the CLI doesn't ask;
 //                        aliases: { action: { args, summary } } for extra commands that
 //                        run the same tool with some inputs fixed (campaigns resume)
 //   destructive        - true when it sends messages, spends credits, posts tweets,
@@ -858,7 +860,12 @@ const dataTools = [
       offset: z.number().optional().describe("Pagination offset"),
     },
     run: (params, call) => call("POST", "/people/search", params),
-    cli: { group: "people", action: "search" },
+    cli: {
+      group: "people",
+      action: "search",
+      free: (args) => args.count_only === true,
+      example: '--bio-contains founder --location-contains "San Francisco" --count-only',
+    },
     destructive: true,
   },
   {

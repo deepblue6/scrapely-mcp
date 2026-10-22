@@ -12,6 +12,7 @@ before(async () => {
   api = await startMockApi({
     "POST /campaigns/pause": { success: true, message: "Campaign paused" },
     "POST /dm/send": { success: true },
+    "POST /people/search": { count: 42 },
     "GET /campaigns/analytics": () => ({ status: 503, body: { error: "Service unavailable" } }),
     "GET /people/credits": () => ({ status: 429, body: { error: "Too many requests" } }),
   });
@@ -133,6 +134,21 @@ test("destructive commands refuse to run without --yes when not in a terminal", 
   assert.match(stderr, /AI agents: show the lines above to the user and add --yes only after they approve/);
   assert.doesNotMatch(stderr, /--help/, "not a usage mistake, so no pointer to --help");
   assert.equal(sentTo("POST", "/campaigns/pause").length, before, "nothing was sent");
+});
+
+test("people search --count-only is free, so it runs without --yes; row searches still ask", async () => {
+  const before = sentTo("POST", "/people/search").length;
+  const count = await cli(["people", "search", "--bio-contains", "founder", "--count-only", "--json"]);
+  assert.equal(count.code, 0);
+  assert.deepEqual(JSON.parse(count.stdout), { count: 42 });
+  assert.deepEqual(sentTo("POST", "/people/search").at(-1).body, { bio_contains: ["founder"], count_only: true });
+
+  const rows = await cli(["people", "search", "--bio-contains", "founder"]);
+  assert.equal(rows.code, 2);
+  assert.match(rows.stderr, /needs confirmation/);
+  assert.equal(sentTo("POST", "/people/search").length, before + 1, "the row search was not sent");
+  const noCount = await cli(["people", "search", "--bio-contains", "founder", "--no-count-only"]);
+  assert.equal(noCount.code, 2);
 });
 
 test("the confirmation shows the flags as typed", async () => {
