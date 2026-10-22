@@ -52,7 +52,10 @@ export function parseFlags(argv, options, commandName) {
     const flag = err.message.match(/'(--?[^' ]+)/)?.[1] || "";
     if (err.code === "ERR_PARSE_ARGS_UNKNOWN_OPTION") {
       const known = Object.keys(options).map((name) => `--${name}`);
-      const guess = closest(flag.split("=")[0], known);
+      const typed = flag.split("=")[0];
+      // "--campaign" -> "--campaign-name": a cut-short flag is too far apart for closest().
+      const longer = known.filter((k) => k.startsWith(`${typed}-`)).sort((a, b) => a.length - b.length)[0];
+      const guess = longer || closest(typed, known);
       const hint = guess ? ` Did you mean ${guess}?` : "";
       throw new UsageError(`Unknown option ${flag}.${hint}`, commandName);
     }
@@ -177,7 +180,13 @@ function validationMessage(error, fields, values) {
 }
 
 // "campaigns get 'Agency owners'" -> suggest the command's own first flag.
-function unexpectedArgument(value, fields, commandName) {
+// "--replied true" -> on/off flags take no value.
+function unexpectedArgument(value, fields, commandName, argv) {
+  const before = argv[argv.indexOf(value) - 1]?.replace(/^--(no-)?/, "");
+  const onOff = before && fields.find((f) => f.kind === "boolean" && f.flag === before);
+  if (onOff) {
+    return new UsageError(`--${onOff.flag} takes no value: write --${onOff.flag} for yes or --no-${onOff.flag} for no (got "${value}").`, commandName);
+  }
   const field = fields.find((f) => !f.optional && f.kind !== "boolean") || fields.find((f) => f.kind !== "boolean");
   if (!field) return new UsageError(`Unexpected argument "${value}". This command takes no arguments.`, commandName);
   const example = /^[\w@.:/-]+$/.test(value) ? value : JSON.stringify(value);
@@ -190,7 +199,7 @@ export async function parseToolArgs(tool, argv, commandName) {
   const booleanFlags = new Set(fields.filter((f) => f.kind === "boolean").map((f) => f.flag));
   const { values, positionals } = parseFlags(normalizeBooleans(argv, booleanFlags), buildOptions(fields), commandName);
 
-  if (positionals.length > 0) throw unexpectedArgument(positionals[0], fields, commandName);
+  if (positionals.length > 0) throw unexpectedArgument(positionals[0], fields, commandName, argv);
 
   const args = {};
   for (const field of fields) {
