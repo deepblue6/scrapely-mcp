@@ -16,6 +16,8 @@
 //                        description's first sentence doesn't fit the CLI;
 //                        notice(data): a line printed to stderr after the result
 //                        (e.g. "save this key now"), or null;
+//                        failed(data): true when the result reports a failure,
+//                        so the command exits 1 (e.g. a webhook test that failed);
 //                        defaults: { input: value } so a flag can be left out;
 //                        aliases: { action: { args, summary } } for extra commands that
 //                        run the same tool with some inputs fixed (campaigns resume)
@@ -890,7 +892,12 @@ const webhookTools = [
       url: z.string().optional().describe(`${WEBHOOK_URL_HINT}. Leave out to test every URL`),
     },
     run: ({ url }, call) => call("POST", "/webhooks/test", url === undefined ? {} : { url }),
-    cli: { group: "webhooks", action: "test", summary: "Send a sample event to one or all of your webhook URLs" },
+    cli: {
+      group: "webhooks",
+      action: "test",
+      summary: "Send a sample event to one or all of your webhook URLs",
+      failed: (data) => Array.isArray(data?.results) && data.results.some((r) => !r.ok),
+    },
   },
 ];
 

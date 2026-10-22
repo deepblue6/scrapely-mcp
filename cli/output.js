@@ -15,6 +15,7 @@ const COLUMN_PRESETS = {
   listeners: ["id", "target_handle", "listen_followers", "listen_following", "is_active", "last_error"],
   events: ["event", "detected_at", "target_handle", "user.screen_name", "user.name", "user.followers_count"],
   webhooks: ["url", "key_preview"],
+  results: ["url", "ok", "status", "error"],
 };
 
 const LABELS = {
@@ -32,7 +33,7 @@ const EMPTY_TEXT = { key_preview: "none" };
 
 // Columns people copy into the next command (IDs, handles): never cut short.
 const isIdentifier = (path, key) => /(^|[._])id$|handle$|screen_name$/.test(path) ||
-  (key === "campaigns" && path === "name") || (key === "webhooks" && path === "url");
+  (key === "campaigns" && path === "name") || ((key === "webhooks" || key === "results") && path === "url");
 
 const AUTO_FIRST = ["id", "name", "handle", "twitter_handle", "status"];
 const MAX_AUTO_COLUMNS = 8;

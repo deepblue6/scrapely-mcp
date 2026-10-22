@@ -65,6 +65,7 @@ export async function runTool(tool, argv) {
 
   // Chunked tools (imports, add-leads) report a mid-way failure inside the result instead of throwing.
   if (data && typeof data === "object" && typeof data.error === "string") process.exitCode = 1;
+  if (tool.cli.failed?.(data)) process.exitCode = 1;
 }
 
 function parseQuery(pairs) {

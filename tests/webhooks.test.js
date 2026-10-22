@@ -37,7 +37,13 @@ before(async () => {
     }),
     "DELETE /webhooks": ({ body }) => ({ body: { success: true, url: body.url } }),
     "PATCH /webhooks/settings": ({ body }) => ({ body: { enabled: body.enabled ?? true, all_replies: body.all_replies ?? false, webhooks: [], events: [] } }),
-    "POST /webhooks/test": { results: [{ url: "https://93.184.215.14/hook", ok: true, status: 200 }] },
+    "POST /webhooks/test": ({ body }) => ({
+      body: {
+        results: body.url === "https://93.184.215.15/down"
+          ? [{ url: body.url, ok: false, status: 500, error: "HTTP 500" }]
+          : [{ url: "https://93.184.215.14/hook", ok: true, status: 200 }],
+      },
+    }),
   });
 });
 after(() => api.close());
@@ -165,8 +171,17 @@ test("webhooks test sends to all URLs, or just the one given", async () => {
   assert.deepEqual(sentTo("POST", "/webhooks/test").at(-1).body, {});
   assert.match(all.stdout, /93\.184\.215\.14\/hook/);
 
+  assert.match(all.stdout, /^URL\s+OK\s+STATUS$/m);
+
   await cli(["webhooks", "test", "--url", "https://93.184.215.14/hook"]);
   assert.deepEqual(sentTo("POST", "/webhooks/test").at(-1).body, { url: "https://93.184.215.14/hook" });
+});
+
+test("webhooks test exits 1 when a webhook fails", async () => {
+  const { code, stdout } = await cli(["webhooks", "test", "--url", "https://93.184.215.15/down"]);
+  assert.equal(code, 1);
+  assert.match(stdout, /^URL\s+OK\s+STATUS\s+ERROR$/m);
+  assert.match(stdout, /93\.184\.215\.15\/down\s+no\s+500\s+HTTP 500/);
 });
 
 test("webhook URL flags say where to find the URL", async () => {
