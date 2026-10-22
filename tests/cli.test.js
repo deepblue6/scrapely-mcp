@@ -73,7 +73,10 @@ test("help speaks CLI: commands and --flags, never MCP tool names", async () => 
 test("help says where IDs come from and fills in undescribed flags", async () => {
   const dm = await cli(["dm", "send", "--help"]);
   assert.match(dm.stdout, /--conversation-id <text>[^\n]*\n\s+Find it with: scrapely conversations list/);
-  assert.match(dm.stdout, /Find it with: scrapely accounts list \(ID column\)/);
+  assert.match(dm.stdout, /--account-id <text>[^\n]*\n\s+Use the conversation's account_id: scrapely conversations\s+list\s+--conversation-id <id>/);
+  assert.doesNotMatch(dm.stdout, /accounts list/, "replying from any account could use the wrong one");
+  const create = await cli(["campaigns", "launch", "--help"]);
+  assert.match(create.stdout, /Find it with: scrapely accounts list \(ID column\)/, "other commands keep the general hint");
   const launch = await cli(["campaigns", "launch", "--help"]);
   assert.match(launch.stdout, /--lead-source-ids[^\n]*\n\s+Find it with: scrapely sources list/);
   assert.match(launch.stdout, /--\[no-\]enable-follow\s+Follow each lead's profile before the DM/);

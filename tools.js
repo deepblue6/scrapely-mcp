@@ -648,7 +648,12 @@ const conversationTools = [
     },
     run: ({ conversation_id, account_id, handle, limit, cursor, offset, include_messages }, call) =>
       call("GET", "/conversations", null, { conversation_id, account_id, handle, limit, cursor, offset, include_messages }),
-    cli: { group: "conversations", action: "list" },
+    cli: {
+      group: "conversations",
+      action: "list",
+      summary: "List your DM conversations, most recent message first",
+      description: "List your DM conversations, most recent message first. Each one has the account_id of the X account it belongs to (reply from that account with scrapely dm send).",
+    },
   },
   {
     name: "send_dm",
