@@ -895,7 +895,7 @@ const webhookTools = [
   },
   {
     name: "test_webhook",
-    description: "Send a sample new_reply event to one of your webhook URLs, or to all of them, to check your endpoint receives it. Works even while webhooks are turned off. Returns, per URL, whether it succeeded and the HTTP status your endpoint answered with.",
+    description: "Send a sample new_reply event to one of your webhook URLs, or to all of them (the first 10 saved), to check your endpoint receives it. Works even while webhooks are turned off. Redirects are not followed, so use the final URL. Returns, per URL, whether it succeeded and the HTTP status your endpoint answered with.",
     inputs: {
       url: z.string().optional().describe(`${WEBHOOK_URL_HINT}. Leave out to test every URL`),
     },

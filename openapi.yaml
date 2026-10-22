@@ -1458,7 +1458,9 @@ paths:
       summary: Send a test event
       description: |
         Sends a sample `new_reply` event to one of your saved webhook URLs, or to all of them
-        when `url` is left out. Works even while webhooks are turned off. Rate limited per API key.
+        (the first 10 saved) when `url` is left out. Works even while webhooks are turned off.
+        Redirects are not followed: a 3xx answer is reported as `ok: false` with the status and
+        the error "Webhook redirected (redirects are not followed)". Rate limited per account.
       operationId: testWebhook
       requestBody:
         content:
@@ -1466,7 +1468,7 @@ paths:
             schema:
               type: object
               properties:
-                url: { type: string, description: "One saved webhook URL. Leave out to test all." }
+                url: { type: string, description: "One saved webhook URL. Leave out to test all (the first 10 saved)." }
       responses:
         '200':
           description: Result per URL
