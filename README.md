@@ -62,31 +62,166 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
 
 Any MCP-compatible client works. Just run `npx scrapely-mcp` with `SCRAPELY_API_KEY` set in the environment.
 
-## Command-line tool (`scrapely`)
+## Command-line tool (CLI)
 
-The same package ships a `scrapely` command for running Scrapely from your terminal or scripts. It offers the same tools as the MCP server.
+The same package also gives you a `scrapely` command, so you can run your Scrapely outreach from the terminal or from your own scripts. It can do everything the MCP server can: same features, same options.
+
+### Install
 
 ```bash
-npm install -g scrapely-mcp     # installs the `scrapely` command
-scrapely login                  # paste your API key (it stays hidden)
-scrapely campaigns list
-scrapely campaigns get --campaign-name "Agency owners"
-scrapely campaigns pause --campaign-name "Agency owners"
-scrapely campaigns resume --campaign-name "Agency owners"
-scrapely conversations list --json
+npm install -g scrapely-mcp
 ```
 
-Without installing: `npx -p scrapely-mcp scrapely campaigns list`.
+This installs the `scrapely` command. To try it without installing anything, put `npx -p scrapely-mcp` in front of any command:
 
-> `npx scrapely` is **not** this tool: it downloads an unrelated npm package with that name. Use `npx -p scrapely-mcp scrapely ...` or install `scrapely-mcp` globally.
+```bash
+npx -p scrapely-mcp scrapely campaigns list
+```
 
-- `scrapely --help` lists every group; add `--help` to any group or command for its options and an example.
-- Results print as tables; add `--json` for raw JSON (for scripts and `jq`).
-- Commands that send DMs, spend credits, launch, pause, delete or overwrite ask "Continue? [y/N]" first. In scripts (no terminal), pass `--yes`.
-- The key is saved in `~/.config/scrapely/config.json` (readable only by you; `%APPDATA%\scrapely` on Windows). `SCRAPELY_API_KEY` in the environment takes priority. `scrapely whoami` shows which key is in use.
-- `scrapely api GET /campaigns --query limit=5` calls any API endpoint directly.
+> `npx scrapely` (without `-p scrapely-mcp`) is **not** this tool. It downloads a different npm package that happens to have the same name.
 
 Requires Node.js 18.3 or newer.
+
+### Log in
+
+```bash
+scrapely login
+```
+
+Create an API key at [app.scrapely.co/settings/integrations](https://app.scrapely.co/settings/integrations), then paste it when asked (what you type stays hidden). Scrapely checks the key before saving it.
+
+- The key is saved in `~/.config/scrapely/config.json` (`%APPDATA%\scrapely\config.json` on Windows), and only your user can read that file.
+- `scrapely whoami` shows which key is in use (only its last 4 characters) and where it comes from.
+- `scrapely logout` removes the saved key.
+- In scripts and CI you can skip `login` and set the `SCRAPELY_API_KEY` environment variable instead. When it is set, it always wins over the saved key.
+
+### Your first 5 minutes
+
+```bash
+# 1. See your connected X accounts (copy an ID from the ID column for later)
+scrapely accounts list
+
+# 2. See your campaigns and how they are doing
+scrapely campaigns list
+
+# 3. Look at one campaign in detail: replies, per-account stats, messages and settings
+scrapely campaigns get --campaign-name "Agency owners"
+
+# 4. Count founders in New York with 1,000+ followers in the People database
+#    (counting is free; it still asks "Continue?" because full searches use credits)
+scrapely people search --bio-contains founder --location-contains "New York" --min-followers 1000 --count-only
+
+# 5. Reply to someone: find the conversation, then send the DM from one of your accounts
+scrapely conversations list --limit 10
+scrapely dm send --conversation-id <conversation-id> --account-id <account-id> --message "Thanks, talk soon!"
+```
+
+Help is built in at every level:
+
+```bash
+scrapely --help                    # every group of commands
+scrapely campaigns --help          # every command in a group
+scrapely campaigns launch --help   # every option of a command, with an example
+```
+
+Options are written as `--flags`. For yes/no options, `--include-messages` means yes and `--no-include-messages` means no. For lists, repeat the flag or separate values with commas (`--bio-contains founder,ceo`). Options that take structured data (like a campaign's message variants) accept JSON text, `@file.json` to read it from a file, or `-` to read it from stdin.
+
+### Use it in scripts: `--json`
+
+Results print as easy-to-read tables. Add `--json` to get the raw JSON instead, which is ideal for scripts and tools like `jq`:
+
+```bash
+scrapely campaigns list --json | jq '.campaigns[].name'
+```
+
+### Confirmation before changes, and `--yes`
+
+Commands that send DMs, spend credits, launch, pause, delete or overwrite something show what they are about to do and ask `Continue? [y/N]` first. Nothing happens unless you answer yes. These commands are marked "yes" in the "Asks first" column below, and with `*` in `scrapely <group> --help`.
+
+To skip the question, add `--yes` (or `-y`). In a script, where there is nobody to answer, these commands stop and do nothing unless you pass `--yes`:
+
+```bash
+scrapely campaigns pause --campaign-name "Agency owners" --yes
+```
+
+### Call any API endpoint: `scrapely api`
+
+If something you need doesn't have a command yet, `scrapely api` calls any endpoint of the Scrapely API directly with your API key and prints the JSON response. Paths are relative to `https://app.scrapely.co/api/v1`.
+
+```bash
+scrapely api GET /campaigns --query limit=5
+scrapely api POST /campaigns/pause --data '{"campaign_name":"Agency owners","is_paused":true}'
+```
+
+`--data` takes JSON text, `@file.json`, or `-` for stdin. Anything other than a `GET` asks for confirmation first (or pass `--yes`).
+
+### Other options
+
+| Option | What it does |
+|--------|--------------|
+| `--json` | Print raw JSON instead of tables |
+| `-y`, `--yes` | Don't ask "Continue?" before commands that change things |
+| `--debug` | Show technical details when something fails |
+| `-h`, `--help` | Show help |
+| `--version` | Show the installed version |
+
+### All commands
+
+| Command | What it does | Asks first |
+|---------|--------------|:----------:|
+| `scrapely accounts list` | List all connected Twitter/X accounts in the workspace |  |
+| `scrapely accounts add` | Add a new Twitter/X account to the workspace |  |
+| `scrapely accounts remove` | Remove a Twitter/X account from the workspace | yes |
+| `scrapely accounts update-cookies` | Update cookies for an existing Twitter/X account |  |
+| `scrapely accounts pause` | Pause or unpause DM sending for a Twitter/X account | yes |
+| `scrapely accounts resume` | Resume DM sending for a paused Twitter/X account | yes |
+| `scrapely accounts pause-followups` | Pause or unpause follow-up messages for a Twitter/X account | yes |
+| `scrapely accounts resume-followups` | Resume follow-up messages for a Twitter/X account | yes |
+| `scrapely accounts update-handle` | Update the Twitter/X handle for an existing account |  |
+| `scrapely accounts update-proxy` | Update proxy settings for an existing Twitter/X account |  |
+| `scrapely accounts warmup` | Enable or disable warmup mode for a Twitter/X account | yes |
+| `scrapely tags get` | Get tags for a specific account or all accounts |  |
+| `scrapely tags set` | Replace all tags for an account | yes |
+| `scrapely tags update` | Add or remove individual tags on an account |  |
+| `scrapely sources create` | Create a new lead source by scraping followers/following from Twitter/X accounts | yes |
+| `scrapely sources list` | List your lead sources (IDs, status, lead counts) |  |
+| `scrapely sources leads` | Get leads from a specific scraping source |  |
+| `scrapely sources import` | Import your own list of leads (e.g. from a CSV) into a new lead source, ready to use in campaigns |  |
+| `scrapely campaigns launch` | Launch a DM campaign targeting leads from scraping sources | yes |
+| `scrapely campaigns launch-import` | Launch a DM campaign from your own lead list (e.g. a CSV) with custom data columns — same as Import Campaign in the dashboard | yes |
+| `scrapely campaigns pause` | Pause or unpause a campaign | yes |
+| `scrapely campaigns resume` | Resume a paused campaign | yes |
+| `scrapely campaigns leads` | List the leads in a campaign with their status, sending account, reply info and custom_fields (the columns from an import campaign, e.g. a personalized link) |  |
+| `scrapely campaigns add-leads` | Add leads to an existing campaign (same as adding leads in the dashboard) | yes |
+| `scrapely campaigns add-source` | Add every lead from a lead source (a scrape or import) to an existing campaign, same as Add to Campaign in the dashboard | yes |
+| `scrapely campaigns rename` | Rename a campaign |  |
+| `scrapely campaigns update` | Edit settings for an existing campaign — message variants, followups, engagement actions, send window/days | yes |
+| `scrapely campaigns list` | List campaigns with basic stats |  |
+| `scrapely campaigns get` | Get detailed analytics for a single campaign — totals, per-account breakdown, replies, settings (message variants, followups, engagement, send window), and pause state |  |
+| `scrapely campaigns analytics` | Get detailed campaign analytics with optional date range filtering |  |
+| `scrapely media upload` | Upload an image to attach to campaign DMs or follow-ups |  |
+| `scrapely conversations list` | Fetch conversations with optional filters |  |
+| `scrapely dm send` | Send a direct message to an existing conversation | yes |
+| `scrapely crm get` | Get conversations organized by CRM tags |  |
+| `scrapely crm update` | Update CRM data for a conversation |  |
+| `scrapely listeners list` | List follower listeners: X accounts being watched for new followers and/or new following |  |
+| `scrapely listeners add` | Start watching an X account for new followers and/or new following (same as adding a listener in the dashboard) |  |
+| `scrapely listeners update` | Change what a listener watches (followers, following or both), or pause/resume it | yes |
+| `scrapely listeners events` | Query the new followers / new following your follower listeners have detected, newest first — including any you missed in your webhook |  |
+| `scrapely listeners remove` | Stop watching an X account and delete its listener | yes |
+| `scrapely people search` | Search the Scrapely People database — millions of Twitter/X profiles | yes |
+| `scrapely people credits` | Check your People database search credits balance and reset date |  |
+| `scrapely people schema` | Get the People database table schema — all available columns and their data types |  |
+| `scrapely enrich twitter` | Find a person's Twitter/X profile from their name and company | yes |
+| `scrapely enrich email` | Find a person's email from their Twitter/X handle | yes |
+| `scrapely enrich credits` | Check your enrichment credit balance |  |
+| `scrapely tweets schedule` | Schedule a tweet to be posted at a specific time | yes |
+| `scrapely tweets list` | List scheduled tweets with optional filters |  |
+| `scrapely tweets cancel` | Cancel a pending scheduled tweet | yes |
+| `scrapely webhooks info` | Get documentation for webhook events and payload structure |  |
+| `scrapely feedback send` | Report a bug or a confusing tool to the Scrapely team |  |
+
+Plus `scrapely login`, `scrapely logout`, `scrapely whoami`, `scrapely api` and `scrapely help`. Run any command with `--help` to see all of its options.
 
 ## Available Tools
 
