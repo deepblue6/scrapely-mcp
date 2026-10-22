@@ -1,5 +1,6 @@
 // Help text, generated from the tool registry (descriptions + zod .describe()).
 
+import { API_DOCS_URL } from "./agent-guide.js";
 import { describeInputs } from "./schema.js";
 import { BUILTINS, GROUPS, commandName, groupNames, groupTools } from "./registry.js";
 import { colors, terminalWidth, wrap } from "./style.js";
@@ -197,6 +198,7 @@ export function apiHelp() {
     "",
     "Call any Scrapely API endpoint directly and print the JSON response.",
     "For when a command doesn't exist yet. Paths are relative to https://app.scrapely.co/api/v1",
+    `Endpoints and their fields: ${API_DOCS_URL}`,
     "",
     c.bold("Usage"),
     "  scrapely api <METHOD> <path> [--data <json>] [--query key=value ...]",

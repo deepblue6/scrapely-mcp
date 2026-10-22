@@ -255,6 +255,11 @@ test("login reads the key from stdin and rejects a bad one without saving", asyn
   assert.throws(() => statSync(join(other, ".config", "scrapely", "config.json")));
 });
 
+test("api --help links the endpoint reference", async () => {
+  const { stdout } = await cli(["api", "--help"]);
+  assert.match(stdout, /Endpoints and their fields: https:\/\/app\.scrapely\.co\/documentation/);
+});
+
 test("api GET prints JSON", async () => {
   const { code, stdout } = await cli(["api", "GET", "/campaigns", "--query", "limit=5"]);
   assert.equal(code, 0);
