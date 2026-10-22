@@ -16,10 +16,12 @@ export function tempHome() {
 export function runCli(args, { base, home = tempHome(), env = {}, input = "" } = {}) {
   const childEnv = { ...process.env, HOME: home, XDG_CONFIG_HOME: join(home, ".config"), ...env };
   delete childEnv.SCRAPELY_API_KEY; // never pick up a real key from the developer's shell
+  delete childEnv.SCRAPELY_PROFILE;
   delete childEnv.NO_COLOR;
   childEnv.SCRAPELY_API_BASE = base || "http://127.0.0.1:9/never-called";
   if (env.SCRAPELY_API_KEY) childEnv.SCRAPELY_API_KEY = env.SCRAPELY_API_KEY;
   if (env.NO_COLOR) childEnv.NO_COLOR = env.NO_COLOR;
+  if (env.SCRAPELY_PROFILE) childEnv.SCRAPELY_PROFILE = env.SCRAPELY_PROFILE;
 
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [CLI, ...args], { env: childEnv });

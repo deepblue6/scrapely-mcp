@@ -204,7 +204,7 @@ test("login validates the key, saves it with 0600 permissions and never echoes i
   assert.match(stdout, /sk_live_…abcd/);
 
   const file = join(home, ".config", "scrapely", "config.json");
-  assert.equal(JSON.parse(readFileSync(file, "utf8")).api_key, GOOD_KEY);
+  assert.deepEqual(JSON.parse(readFileSync(file, "utf8")), { profiles: { default: { api_key: GOOD_KEY } }, default_profile: "default" });
   if (process.platform !== "win32") assert.equal(statSync(file).mode & 0o777, 0o600);
 
   // The saved key is used by later commands, and whoami shows it masked.
