@@ -54,11 +54,13 @@ export async function apiCall(apiKey, method, path, body = null, queryParams = n
   }
 
   const res = await fetch(url, options);
-  const data = parseBody(await res.text());
+  const text = await res.text();
 
   if (!res.ok) {
+    const data = parseBody(text);
     throw new ApiError(res.status, data, errorMessage(data, res));
   }
 
-  return data;
+  // A success must be JSON: an empty body or an HTML page here is a failure, not a result.
+  return JSON.parse(text);
 }
