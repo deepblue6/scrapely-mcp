@@ -96,6 +96,7 @@ test("required fields, unknown flags and stray arguments are usage errors", asyn
   await usageError(parse("get_campaign_detail", []), /--campaign-name is required/);
   await usageError(parse("get_campaign_detail", ["--campain-name", "X"]), /Did you mean --campaign-name\?/);
   await usageError(parse("get_campaign_detail", ["October"]), /Unexpected argument "October"/);
+  await usageError(parse("get_campaign_detail", ["Agency owners"]), /e\.g\. --campaign-name "Agency owners"/);
   await usageError(parse("list_campaigns", ["--limit"]), /--limit needs a value/);
 });
 
@@ -103,4 +104,19 @@ test("global flags are picked up anywhere", async () => {
   const { globals } = await parse("list_campaigns", ["--json", "-y", "--limit", "1"]);
   assert.equal(globals.json, true);
   assert.equal(globals.yes, true);
+});
+
+test("list values: JSON arrays keep commas, other brackets are literal, empty needs '[]'", async () => {
+  const comma = await parse("set_account_tags", ["--account-id", "a1", "--tags", '["Sales, EMEA", "VIP"]']);
+  assert.deepEqual(comma.args.tags, ["Sales, EMEA", "VIP"]);
+  const literal = await parse("set_account_tags", ["--account-id", "a1", "--tags", "[VIP]"]);
+  assert.deepEqual(literal.args.tags, ["[VIP]"]);
+  await usageError(parse("edit_campaign", ["--campaign-name", "X", "--send-days", ""]), /--send-days is empty.*'\[\]'/);
+  const cleared = await parse("edit_campaign", ["--campaign-name", "X", "--send-days", "[]"]);
+  assert.deepEqual(cleared.args.send_days, []);
+});
+
+test("passing both --flag and --no-flag is a usage error", async () => {
+  await usageError(parse("toggle_warmup", ["--account-id", "a", "--warmup-enabled", "--no-warmup-enabled"]),
+    /Use either --warmup-enabled or --no-warmup-enabled, not both/);
 });

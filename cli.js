@@ -84,7 +84,15 @@ async function main(argv) {
   return runTool(tool, rest);
 }
 
-const argv = process.argv.slice(2);
+// `scrapely --json campaigns list` works like `scrapely campaigns list --json`.
+const GLOBAL_SWITCHES = ["--json", "--yes", "-y", "--debug"];
+function globalsLast(args) {
+  let n = 0;
+  while (n < args.length - 1 && GLOBAL_SWITCHES.includes(args[n])) n++;
+  return [...args.slice(n), ...args.slice(0, n)];
+}
+
+const argv = globalsLast(process.argv.slice(2));
 
 main(argv).catch((err) => {
   const c = colors(process.stderr);

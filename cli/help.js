@@ -63,7 +63,7 @@ function fieldNotes(field, schema) {
   const notes = [];
   if (field.kind === "boolean") notes.push(`--${field.flag} for yes, --no-${field.flag} for no`);
   if (field.kind === "enum") notes.push(`One of: ${field.values.join(", ")}`);
-  if (field.kind === "list") notes.push("Repeat the flag or separate with commas");
+  if (field.kind === "list") notes.push(`Repeat the flag or separate with commas (for a value with a comma: '["a, b"]')`);
   if (field.kind === "json") {
     notes.push("JSON text, @file.json, or - to read from stdin");
     notes.push(`Shape: ${JSON.stringify(sampleJson(schema)).replace(/,/g, ", ")}`);

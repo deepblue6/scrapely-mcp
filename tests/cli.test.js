@@ -208,6 +208,18 @@ test("api refuses paths outside /api/v1", async () => {
   assert.equal(api.requests.length, before, "nothing was sent");
 });
 
+test("global flags also work before the command", async () => {
+  const { code, stdout } = await cli(["--json", "campaigns", "list"]);
+  assert.equal(code, 0);
+  assert.equal(JSON.parse(stdout).campaigns[0].name, "October launch");
+});
+
+test("api merges a query string in the path with --query", async () => {
+  const { code } = await cli(["api", "GET", "/campaigns?limit=5", "--query", "offset=2"]);
+  assert.equal(code, 0);
+  assert.deepEqual(sentTo("GET", "/campaigns").at(-1).query, { limit: "5", offset: "2" });
+});
+
 test("typos get a suggestion and exit 2", async () => {
   const group = await cli(["campains", "list"]);
   assert.equal(group.code, 2);

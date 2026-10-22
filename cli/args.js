@@ -80,6 +80,17 @@ async function readJsonValue(field, raw, commandName) {
   }
 }
 
+// '["Sales, EMEA"]' -> ["Sales, EMEA"]; anything that isn't a JSON array (like "[VIP]") -> null.
+function parseJsonArray(raw) {
+  if (!raw.trim().startsWith("[")) return null;
+  try {
+    const value = JSON.parse(raw);
+    return Array.isArray(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 function toNumber(field, raw, commandName) {
   const n = Number(raw);
   if (raw.trim() === "" || !Number.isFinite(n)) {
@@ -98,9 +109,13 @@ async function coerce(field, raw, commandName) {
       }
       return raw;
     case "list": {
-      // Repeat the flag or separate with commas; a JSON array also works.
-      if (raw.length === 1 && raw[0].trim().startsWith("[")) return readJsonValue(field, raw[0], commandName);
+      // Repeat the flag or separate with commas; a JSON array also works (for values with commas).
+      const json = raw.length === 1 ? parseJsonArray(raw[0]) : null;
+      if (json) return json;
       const items = raw.flatMap((value) => value.split(",")).map((s) => s.trim()).filter(Boolean);
+      if (items.length === 0) {
+        throw new UsageError(`--${field.flag} is empty. To send an empty list on purpose, pass --${field.flag} '[]'.`, commandName);
+      }
       return field.itemKind === "number" ? items.map((item) => toNumber(field, item, commandName)) : items;
     }
     case "json":
@@ -133,21 +148,27 @@ function validationMessage(error, fields, values) {
   return (nothing ? "Missing required options:\n" : "Some options aren't right:\n") + lines.join("\n");
 }
 
+// "campaigns get 'Agency owners'" -> suggest the command's own first flag.
+function unexpectedArgument(value, fields, commandName) {
+  const field = fields.find((f) => !f.optional && f.kind !== "boolean") || fields.find((f) => f.kind !== "boolean");
+  if (!field) return new UsageError(`Unexpected argument "${value}". This command takes no arguments.`, commandName);
+  const example = /^[\w@.:/-]+$/.test(value) ? value : JSON.stringify(value);
+  return new UsageError(`Unexpected argument "${value}". Pass values as flags, e.g. --${field.flag} ${example}`, commandName);
+}
+
 // Returns { args, globals, positionals }; throws UsageError with friendly text.
 export async function parseToolArgs(tool, argv, commandName) {
   const fields = describeInputs(tool.inputs);
   const booleanFlags = new Set(fields.filter((f) => f.kind === "boolean").map((f) => f.flag));
   const { values, positionals } = parseFlags(normalizeBooleans(argv, booleanFlags), buildOptions(fields), commandName);
 
-  if (positionals.length > 0) {
-    throw new UsageError(
-      `Unexpected argument "${positionals[0]}". Pass values as --flags, e.g. --name "My campaign".`,
-      commandName
-    );
-  }
+  if (positionals.length > 0) throw unexpectedArgument(positionals[0], fields, commandName);
 
   const args = {};
   for (const field of fields) {
+    if (values[field.flag] !== undefined && values[`no-${field.flag}`]) {
+      throw new UsageError(`Use either --${field.flag} or --no-${field.flag}, not both.`, commandName);
+    }
     if (values[`no-${field.flag}`]) {
       args[field.key] = field.kind === "boolean" ? false : null;
     } else if (values[field.flag] !== undefined) {

@@ -91,8 +91,9 @@ export async function runApi(argv) {
   const method = rawMethod.toUpperCase();
   if (!METHODS.includes(method)) throw new UsageError(`Method must be one of: ${METHODS.join(", ")} (got "${rawMethod}").`, "api");
 
-  // Accept "campaigns", "/campaigns" or a pasted "/api/v1/campaigns".
-  const path = "/" + rawPath.replace(/^\/+/, "").replace(/^api\/v1\//, "");
+  // Accept "campaigns", "/campaigns" or a pasted "/api/v1/campaigns", with or without "?a=b".
+  const [rawPathname, rawSearch = ""] = rawPath.split(/\?(.*)/s);
+  const path = "/" + rawPathname.replace(/^\/+/, "").replace(/^api\/v1\//, "");
   try {
     apiUrl(path);
   } catch (err) {
@@ -100,7 +101,7 @@ export async function runApi(argv) {
   }
   const body = await parseData(values.data);
   if (body !== null && method === "GET") throw new UsageError("GET requests can't have --data. Use --query instead.", "api");
-  const query = parseQuery(values.query);
+  const query = { ...Object.fromEntries(new URLSearchParams(rawSearch)), ...parseQuery(values.query) };
 
   const key = requireKey();
   if (method !== "GET") {
