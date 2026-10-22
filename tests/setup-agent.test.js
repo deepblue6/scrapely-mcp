@@ -144,6 +144,14 @@ test("withAgentsBlock refuses a file with only one marker", () => {
   assert.equal(withAgentsBlock("no newline", block), `no newline\n\n${block}\n`);
 });
 
+test("withAgentsBlock keeps a CRLF file CRLF, and stays idempotent", () => {
+  const block = agentsBlock(version);
+  const once = withAgentsBlock("Line one\r\nLine two\r\n", block);
+  assert.ok(once.startsWith("Line one\r\nLine two\r\n\r\n<!-- scrapely:start -->\r\n"));
+  assert.doesNotMatch(once, /[^\r]\n/, "no bare LF line endings");
+  assert.equal(withAgentsBlock(once, block), once);
+});
+
 test("without a terminal it refuses to write unless --yes, and lists the files", async () => {
   const { home, cwd, run } = setup();
   const { code, stdout, stderr } = await run([]);

@@ -100,13 +100,16 @@ export function agentsBlock(version) {
 }
 
 // Puts the block into an AGENTS.md text: replaces an existing block in place,
-// otherwise appends it. Text outside the markers is never changed.
-export function withAgentsBlock(existing, block) {
+// otherwise appends it. Text outside the markers is never changed, and the block
+// uses the file's line endings (CRLF files stay CRLF).
+export function withAgentsBlock(existing, lfBlock) {
+  const eol = existing.includes("\r\n") ? "\r\n" : "\n";
+  const block = lfBlock.replace(/\n/g, eol);
   const start = existing.indexOf(AGENTS_START);
   const end = start < 0 ? -1 : existing.indexOf(AGENTS_END, start);
   if (start >= 0 && end >= 0) return existing.slice(0, start) + block + existing.slice(end + AGENTS_END.length);
   if (start >= 0 || existing.includes(AGENTS_END)) return null; // one marker without the other
-  if (!existing.trim()) return block + "\n";
-  const gap = existing.endsWith("\n\n") ? "" : existing.endsWith("\n") ? "\n" : "\n\n";
-  return existing + gap + block + "\n";
+  if (!existing.trim()) return block + eol;
+  const gap = existing.endsWith(eol + eol) ? "" : existing.endsWith(eol) ? eol : eol + eol;
+  return existing + gap + block + eol;
 }
