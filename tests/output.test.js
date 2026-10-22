@@ -54,3 +54,62 @@ test("single records render as aligned key/value lines", () => {
   assert.match(out, /^settings$/m);
   assert.match(out, /^ {2}send_days\s+1, 2$/m);
 });
+
+test("a cursor next to the pagination object is shown as the next page", () => {
+  process.env.COLUMNS = "200";
+  const out = show({
+    conversations: [{ conversation_id: "c1", account_handle: "me", receiver: { screen_name: "bob" }, last_message: { text: "hi" }, is_unread: true }],
+    pagination: { limit: 20, count: 1, has_more: true },
+    next_cursor: "CUR123",
+  });
+  assert.match(out, /Next page: --cursor CUR123/);
+});
+
+test("empty top-level arrays and objects say so", () => {
+  assert.equal(show([]), "No results.");
+  assert.equal(show({}), "No results.");
+});
+
+test("control characters from API text never reach the terminal", () => {
+  process.env.COLUMNS = "200";
+  const evil = "hi \u001b[31mred\u001b[0m \u001b]0;title\u0007 \u009b";
+  for (const out of [show([{ id: 1, text: evil }]), show({ message: evil }), show({ [`k\u001b[2J`]: 1 })]) {
+    assert.doesNotMatch(out, /[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/);
+  }
+});
+
+test("emoji are never cut in half and columns stay aligned", () => {
+  process.env.COLUMNS = "40";
+  const out = show([{ id: 1, name: "😀".repeat(40) }, { id: 2, name: "plain" }]);
+  assert.doesNotMatch(out, /�|[\uD800-\uDBFF](?![\uDC00-\uDFFF])/);
+  assert.match(out, /😀…$/m);
+});
+
+test("IDs, handles and campaign names are never truncated", () => {
+  process.env.COLUMNS = "80";
+  const id = "3f2b8c1e-9a7d-4e21-b6c5-1d2e3f4a5b6c";
+  const accounts = show({ accounts: [{ handle: "acme_sales_team_main", name: "Acme Sales Team Main Account", id, is_paused: false, warmup_paused: true, dms_sent: 1234, tags: ["main", "agency", "q4"] }] });
+  assert.match(accounts, /acme_sales_team_main/);
+  assert.match(accounts, new RegExp(id));
+  for (const line of accounts.split("\n")) assert.ok(line.length <= 80, `too wide: ${line}`);
+
+  const campaigns = show({ campaigns: [{ name: "October SaaS founders outreach - wave 2 (EU)", total: 1, completed: 1, pending: 0, replies: 0, progress: 100, is_paused: false }] });
+  assert.match(campaigns, /October SaaS founders outreach - wave 2 \(EU\)/);
+});
+
+test("wide tables drop trailing columns instead of overflowing", () => {
+  process.env.COLUMNS = "40";
+  const row = Object.fromEntries(Array.from({ length: 30 }, (_, i) => [`field_${i}`, `value ${i}`]));
+  const out = show([{ id: "x1", ...row }]);
+  for (const line of out.split("\n")) assert.ok(line.length <= 40, `too wide: ${line.length}`);
+  assert.match(out, /\(\+\d+ columns?: see --json\)/);
+});
+
+test("a list under a summary gets a heading and keeps its extra columns", () => {
+  process.env.COLUMNS = "200";
+  const out = show({ success: true, campaign_name: "Launch", jobs_created: 250, distribution: [{ account_id: "a1", handle: "acme", jobs: 250 }] });
+  assert.match(out, /^Distribution$/m);
+  assert.match(out, /JOBS/);
+  const accounts = show({ success: true, accounts: [{ account_id: "a1", handle: "acme", jobs: 250 }] });
+  assert.match(accounts, /JOBS/);
+});
