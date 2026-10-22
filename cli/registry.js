@@ -31,6 +31,7 @@ export const BUILTINS = {
   whoami: "Show which API key and profile are in use",
   profiles: "Switch between workspaces: list, use, remove saved keys",
   api: "Call any API endpoint directly (advanced)",
+  "setup-agent": "Teach your AI agent (Claude Code, Codex, Cursor) to use this CLI",
   help: "Show help for a command",
 };
 

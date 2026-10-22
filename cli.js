@@ -8,10 +8,11 @@ import { readFileSync } from "node:fs";
 import { login, logout, whoami } from "./cli/auth.js";
 import { parseFlags, takeProfileFlag } from "./cli/args.js";
 import { UsageError, describeError } from "./cli/errors.js";
-import { apiHelp, commandHelp, groupHelp, loginHelp, profilesHelp, rootHelp, whoamiHelp } from "./cli/help.js";
+import { apiHelp, commandHelp, groupHelp, loginHelp, profilesHelp, rootHelp, setupAgentHelp, whoamiHelp } from "./cli/help.js";
 import { runProfiles } from "./cli/profiles.js";
 import { ACTION_SYNONYMS, BUILTINS, BUILTIN_ALIASES, allCommandNames, findTool, groupNames, groupTools } from "./cli/registry.js";
 import { runApi, runTool } from "./cli/run.js";
+import { runSetupAgent } from "./cli/setup-agent.js";
 import { closest } from "./cli/suggest.js";
 import { colors } from "./cli/style.js";
 
@@ -61,6 +62,7 @@ function help(words) {
   if (group === "login") return print(loginHelp());
   if (group === "profiles" || group === "profile") return print(profilesHelp());
   if (group === "whoami" || group === "status") return print(whoamiHelp());
+  if (group === "setup-agent") return print(setupAgentHelp());
   if (!groupNames().includes(group)) throw unknownCommand(words);
   if (!action) return print(groupHelp(group));
   const tool = findTool(group, action);
@@ -94,6 +96,8 @@ async function main(argv, profile) {
       return wantsHelp(afterFirst) ? print(whoamiHelp()) : whoami({ profile });
     case "profiles":
       return !second || wantsHelp(afterFirst) ? print(profilesHelp()) : runProfiles(afterFirst, { profile });
+    case "setup-agent":
+      return wantsHelp(afterFirst) ? print(setupAgentHelp()) : runSetupAgent(afterFirst, { version });
   }
 
   if (!groupNames().includes(first)) throw unknownCommand(argv);

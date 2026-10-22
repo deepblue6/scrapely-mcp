@@ -276,3 +276,31 @@ export function profilesHelp() {
     "Run scrapely whoami to see which key and profile are in use.",
   ].join("\n");
 }
+
+export function setupAgentHelp() {
+  const c = colors(process.stdout);
+  return [
+    c.bold("scrapely setup-agent"),
+    "",
+    "Teach your AI agent to use the Scrapely CLI, with nothing to copy and paste.",
+    "Writes short instructions (built from this version's commands) to:",
+    "  Claude Code   ~/.claude/skills/scrapely/SKILL.md (a skill)",
+    "  AGENTS.md     ./AGENTS.md, read by Codex, Cursor and many others (only the",
+    "                block between <!-- scrapely:start --> and <!-- scrapely:end -->)",
+    "Shows the files and asks before writing. Run it again after upgrading to refresh them.",
+    "",
+    c.bold("Options"),
+    rows([
+      ["--claude", "Only the Claude Code skill"],
+      ["--agents-md", "Only the AGENTS.md block"],
+      ["--project", "Put the skill in this folder's .claude/skills instead of your home folder"],
+      ["--print", "Print the instructions instead of writing anything"],
+      ["-y, --yes", "Don't ask before writing"],
+    ], c, 14),
+    "",
+    c.bold("Examples"),
+    "  scrapely setup-agent                  Claude Code skill + ./AGENTS.md",
+    "  scrapely setup-agent --claude --project",
+    "  scrapely setup-agent --print --claude > SKILL.md",
+  ].join("\n");
+}
