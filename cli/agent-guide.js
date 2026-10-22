@@ -30,20 +30,7 @@ const BUILTIN_DETAIL = { profiles: "profiles (list, use, remove*)" };
 
 export const DASHBOARD_URL = "https://app.scrapely.co";
 export const API_DOCS_URL = "https://app.scrapely.co/documentation";
-const WEBHOOK_SETTINGS_URL = "https://app.scrapely.co/settings/integrations";
-
-// Webhook advice depends on whether this version can manage webhooks or only describe them.
-const managesWebhooks = () => groupTools("webhooks").some((t) => t.cli.action !== "info");
-
-function webhookKeyLines() {
-  if (!managesWebhooks()) return [];
-  return ["A newly generated webhook key is shown only once: tell the user to store it safely, and don't", "repeat it later."];
-}
-
-function webhookSetupLines() {
-  if (managesWebhooks()) return [];
-  return ["Webhooks can't be created from the CLI yet: `scrapely webhooks info --json` lists the events, and", `the user sets webhook URLs in the dashboard (${WEBHOOK_SETTINGS_URL}).`];
-}
+const NOTIFICATION_SETTINGS_URL = "https://app.scrapely.co/settings/notifications";
 
 // The shared guide. `level` is the markdown level of its top heading.
 export function agentGuide(version, level = 1) {
@@ -102,7 +89,8 @@ export function agentGuide(version, level = 1) {
     "",
     "Never print, log, echo or repeat API keys or webhook keys, and don't read the CLI's config file.",
     "The CLI shows keys masked; keep it that way.",
-    ...webhookKeyLines(),
+    "A newly generated webhook key is shown only once: tell the user to store it safely, and don't",
+    "repeat it later.",
     "",
     h(1, "When no command fits"),
     "",
@@ -110,8 +98,8 @@ export function agentGuide(version, level = 1) {
     "https://app.scrapely.co/api/v1 and prints JSON. Advanced: prefer a real command, and only use",
     `endpoints listed in the reference (${API_DOCS_URL}). Anything but GET needs`,
     "`--yes` and the same approval as above. If nothing fits, tell the user to do it in the dashboard",
-    `(${DASHBOARD_URL}).`,
-    ...webhookSetupLines(),
+    `(${DASHBOARD_URL}). For example, which events send a webhook (such as back-and-forth replies) is`,
+    `chosen in the dashboard (${NOTIFICATION_SETTINGS_URL}); the CLI only adds URLs and turns them on/off.`,
     "",
     h(1, "Errors"),
     "",

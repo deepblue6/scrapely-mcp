@@ -78,9 +78,8 @@ test("the guide covers the traps agents hit in trials", () => {
   assert.match(guide, /https:\/\/app\.scrapely\.co\/documentation/);
   assert.match(guide, /Exit code 2: a wrong command or flag .* or a `\*` command run without `--yes`/);
   assert.match(guide, /rejected SCRAPELY_API_KEY, they unset it/);
-  // This version can't manage webhooks: point to the dashboard, don't promise a webhook key.
-  assert.match(guide, /Webhooks can't be created from the CLI yet.*settings\/integrations/);
-  assert.doesNotMatch(guide, /newly generated webhook key/);
+  assert.match(guide, /newly generated webhook key is shown only once/);
+  assert.match(guide, /which events send a webhook .*settings\/notifications/);
 });
 
 test("writes the user-level skill and ./AGENTS.md with --yes, and says what it wrote", async () => {
