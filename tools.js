@@ -19,6 +19,8 @@
 //                        failed(data): true when the result reports a failure,
 //                        so the command exits 1 (e.g. a webhook test that failed);
 //                        defaults: { input: value } so a flag can be left out;
+//                        free(args): true when this input of a destructive tool
+//                        spends and changes nothing, so the CLI doesn't ask;
 //                        aliases: { action: { args, summary } } for extra commands that
 //                        run the same tool with some inputs fixed (campaigns resume)
 //   destructive        - true when it sends messages, spends credits, posts tweets,
@@ -652,7 +654,12 @@ const conversationTools = [
     },
     run: ({ conversation_id, account_id, handle, limit, cursor, offset, include_messages }, call) =>
       call("GET", "/conversations", null, { conversation_id, account_id, handle, limit, cursor, offset, include_messages }),
-    cli: { group: "conversations", action: "list" },
+    cli: {
+      group: "conversations",
+      action: "list",
+      summary: "List your DM conversations, most recent message first",
+      description: "List your DM conversations, most recent message first. Each one has the account_id of the X account it belongs to (reply from that account with scrapely dm send).",
+    },
   },
   {
     name: "send_dm",
@@ -976,7 +983,12 @@ const dataTools = [
       offset: z.number().optional().describe("Pagination offset"),
     },
     run: (params, call) => call("POST", "/people/search", params),
-    cli: { group: "people", action: "search" },
+    cli: {
+      group: "people",
+      action: "search",
+      free: (args) => args.count_only === true,
+      example: '--bio-contains founder --location-contains "San Francisco" --count-only',
+    },
     destructive: true,
   },
   {

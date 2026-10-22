@@ -56,8 +56,16 @@ const FIND_WITH = {
   tweet_id: "scrapely tweets list",
 };
 
+// The whole hint for one tool's flag, when the general answer above would mislead.
+const HINT_FOR = {
+  // Reply from the account that owns the conversation, not just any connected account.
+  send_dm: { account_id: "Use the conversation's account_id: scrapely conversations list --conversation-id <id>" },
+};
+
 // "Find it with: scrapely accounts list", unless the help line already says so.
 export function findWith(field, tool) {
+  const hint = HINT_FOR[tool.name]?.[field.key];
+  if (hint) return hint;
   const source = field.key === "id" ? `scrapely ${tool.cli.group} list` : FIND_WITH[field.key];
   if (!source || source.startsWith(`scrapely ${tool.cli.group} ${tool.cli.action}`)) return null;
   if (fieldText(field).includes(source.split(" (")[0])) return null;

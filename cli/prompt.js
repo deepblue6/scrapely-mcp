@@ -1,7 +1,7 @@
 // Terminal input: yes/no confirmation, hidden key entry, and reading piped stdin.
 
 import { createInterface } from "node:readline";
-import { UsageError } from "./errors.js";
+import { NeedsConfirmation, UsageError } from "./errors.js";
 
 export function isInteractive() {
   return Boolean(process.stdin.isTTY);
@@ -29,12 +29,13 @@ export function ask(question) {
 }
 
 // Ask before changing things. Without a terminal to ask on, --yes is required.
-export async function confirm(summary, { yes, commandName }) {
+// The refusal is worded for AI agents too: they must ask the user, not just add --yes.
+export async function confirm(summary, { yes }) {
   if (yes) return;
   if (!isInteractive()) {
-    throw new UsageError(
-      `${summary}\nRefusing to continue without confirmation. Re-run with --yes to confirm.`,
-      commandName
+    throw new NeedsConfirmation(
+      `${summary}\nNothing was done: this needs confirmation. Re-run with --yes to go ahead.\n` +
+      "(AI agents: show the lines above to the user and add --yes only after they approve.)"
     );
   }
   process.stderr.write(`${summary}\n`);

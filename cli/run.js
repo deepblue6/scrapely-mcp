@@ -1,10 +1,11 @@
 // Running a registry tool, and the raw `scrapely api` escape hatch.
 
 import { readFileSync } from "node:fs";
-import { apiCall, apiUrl } from "../api.js";
+import { ApiError, apiCall, apiUrl } from "../api.js";
 import { parseFlags, parseToolArgs } from "./args.js";
-import { resolveApiKey } from "./config.js";
-import { CliError, UsageError } from "./errors.js";
+import { requireKey } from "./auth.js";
+import { describeActive } from "./config.js";
+import { UsageError } from "./errors.js";
 import { printResult } from "./output.js";
 import { confirm, readStdin } from "./prompt.js";
 import { commandName } from "./registry.js";
@@ -13,12 +14,6 @@ import { colors, stripControl, truncate } from "./style.js";
 import { cliText } from "./wording.js";
 
 const METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"];
-
-function requireKey() {
-  const active = resolveApiKey();
-  if (!active) throw new CliError("Not logged in. Run: scrapely login (or set SCRAPELY_API_KEY)");
-  return active.key;
-}
 
 const isPlainWord = (text) => /^[\w@.:/+-]+$/.test(text);
 
@@ -44,21 +39,35 @@ function summarizeArgs(args, tool) {
   }).join("  ");
 }
 
-export async function runTool(tool, argv) {
+// apiCall with the active key. A failed call remembers which key it used, so the
+// error can say how to fix that key (saved profile vs SCRAPELY_API_KEY).
+function caller(active) {
+  return async (method, path, body, query) => {
+    try {
+      return await apiCall(active.key, method, path, body, query);
+    } catch (err) {
+      if (err instanceof ApiError) err.active = active;
+      throw err;
+    }
+  };
+}
+
+export async function runTool(tool, argv, { profile } = {}) {
   const name = commandName(tool);
   const { args, globals } = await parseToolArgs(tool, argv, name);
-  const key = requireKey();
+  const active = requireKey(profile);
 
-  if (tool.destructive) {
+  if (tool.destructive && !tool.cli.free?.(args)) {
     const c = colors(process.stderr);
     const details = summarizeArgs(args, tool);
     const what = cliText(tool.description.split(/(?<=\.)\s+(?=[A-Z])/)[0]);
     const summary = `${c.yellow("About to run")} ${c.bold(`scrapely ${name}`)}: ${what}` +
-      (details ? `\n  ${details}` : "");
+      (details ? `\n  ${details}` : "") + `\n  ${describeActive(active)}`;
     await confirm(summary, { yes: globals.yes, commandName: name });
+    if (globals.yes) process.stderr.write(`${describeActive(active)}\n`); // which workspace, even without the question
   }
 
-  const data = await tool.run(args, (method, path, body, query) => apiCall(key, method, path, body, query));
+  const data = await tool.run(args, caller(active));
   printResult(data, globals);
   const notice = tool.cli.notice?.(data);
   if (notice) process.stderr.write(`${colors(process.stderr).yellow(notice)}\n`);
@@ -96,7 +105,7 @@ async function parseData(raw) {
   }
 }
 
-export async function runApi(argv) {
+export async function runApi(argv, { profile } = {}) {
   const { values, positionals } = parseFlags(argv, {
     data: { type: "string" },
     query: { type: "string", multiple: true },
@@ -124,11 +133,13 @@ export async function runApi(argv) {
   if (body !== null && method === "GET") throw new UsageError("GET requests can't have --data. Use --query instead.", "api");
   const query = { ...Object.fromEntries(new URLSearchParams(rawSearch)), ...parseQuery(values.query) };
 
-  const key = requireKey();
+  const active = requireKey(profile);
   if (method !== "GET") {
-    await confirm(`${colors(process.stderr).yellow("About to send")} ${method} ${path}`, { yes: values.yes, commandName: "api" });
+    const summary = `${colors(process.stderr).yellow("About to send")} ${method} ${path}\n  ${describeActive(active)}`;
+    await confirm(summary, { yes: values.yes, commandName: "api" });
+    if (values.yes) process.stderr.write(`${describeActive(active)}\n`);
   }
 
-  const data = await apiCall(key, method, path, body, query);
+  const data = await caller(active)(method, path, body, query);
   printResult(data, { json: true });
 }

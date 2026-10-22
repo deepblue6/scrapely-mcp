@@ -12,6 +12,7 @@ before(async () => {
   api = await startMockApi({
     "POST /campaigns/pause": { success: true, message: "Campaign paused" },
     "POST /dm/send": { success: true },
+    "POST /people/search": { count: 42 },
     "GET /campaigns/analytics": () => ({ status: 503, body: { error: "Service unavailable" } }),
     "GET /people/credits": () => ({ status: 429, body: { error: "Too many requests" } }),
   });
@@ -73,7 +74,10 @@ test("help speaks CLI: commands and --flags, never MCP tool names", async () => 
 test("help says where IDs come from and fills in undescribed flags", async () => {
   const dm = await cli(["dm", "send", "--help"]);
   assert.match(dm.stdout, /--conversation-id <text>[^\n]*\n\s+Find it with: scrapely conversations list/);
-  assert.match(dm.stdout, /Find it with: scrapely accounts list \(ID column\)/);
+  assert.match(dm.stdout, /--account-id <text>[^\n]*\n\s+Use the conversation's account_id: scrapely conversations\s+list\s+--conversation-id <id>/);
+  assert.doesNotMatch(dm.stdout, /accounts list/, "replying from any account could use the wrong one");
+  const create = await cli(["campaigns", "launch", "--help"]);
+  assert.match(create.stdout, /Find it with: scrapely accounts list \(ID column\)/, "other commands keep the general hint");
   const launch = await cli(["campaigns", "launch", "--help"]);
   assert.match(launch.stdout, /--lead-source-ids[^\n]*\n\s+Find it with: scrapely sources list/);
   assert.match(launch.stdout, /--\[no-\]enable-follow\s+Follow each lead's profile before the DM/);
@@ -126,8 +130,25 @@ test("destructive commands refuse to run without --yes when not in a terminal", 
   assert.equal(code, 2);
   assert.match(stderr, /About to run scrapely campaigns pause/);
   assert.match(stderr, /--campaign-name Launch {2}--is-paused/);
-  assert.match(stderr, /--yes/);
+  assert.match(stderr, /Nothing was done: this needs confirmation\. Re-run with --yes to go ahead\./);
+  assert.match(stderr, /AI agents: show the lines above to the user and add --yes only after they approve/);
+  assert.doesNotMatch(stderr, /--help/, "not a usage mistake, so no pointer to --help");
   assert.equal(sentTo("POST", "/campaigns/pause").length, before, "nothing was sent");
+});
+
+test("people search --count-only is free, so it runs without --yes; row searches still ask", async () => {
+  const before = sentTo("POST", "/people/search").length;
+  const count = await cli(["people", "search", "--bio-contains", "founder", "--count-only", "--json"]);
+  assert.equal(count.code, 0);
+  assert.deepEqual(JSON.parse(count.stdout), { count: 42 });
+  assert.deepEqual(sentTo("POST", "/people/search").at(-1).body, { bio_contains: ["founder"], count_only: true });
+
+  const rows = await cli(["people", "search", "--bio-contains", "founder"]);
+  assert.equal(rows.code, 2);
+  assert.match(rows.stderr, /needs confirmation/);
+  assert.equal(sentTo("POST", "/people/search").length, before + 1, "the row search was not sent");
+  const noCount = await cli(["people", "search", "--bio-contains", "founder", "--no-count-only"]);
+  assert.equal(noCount.code, 2);
 });
 
 test("the confirmation shows the flags as typed", async () => {
@@ -165,7 +186,9 @@ test("JSON flags can be read from stdin", async () => {
 test("401 explains how to log in", async () => {
   const { code, stderr } = await cli(["accounts", "list"], { env: { SCRAPELY_API_KEY: "sk_live_wrong0000000" } });
   assert.equal(code, 1);
-  assert.match(stderr, /Invalid or missing API key\. Run: scrapely login/);
+  assert.match(stderr, /Scrapely rejected the key in SCRAPELY_API_KEY \(sk_live_…0000\)/);
+  assert.match(stderr, /unset SCRAPELY_API_KEY/);
+  assert.doesNotMatch(stderr, /sk_live_wrong/);
 });
 
 test("no key at all asks you to log in", async () => {
@@ -204,7 +227,7 @@ test("login validates the key, saves it with 0600 permissions and never echoes i
   assert.match(stdout, /sk_live_…abcd/);
 
   const file = join(home, ".config", "scrapely", "config.json");
-  assert.equal(JSON.parse(readFileSync(file, "utf8")).api_key, GOOD_KEY);
+  assert.deepEqual(JSON.parse(readFileSync(file, "utf8")), { profiles: { default: { api_key: GOOD_KEY } }, default_profile: "default" });
   if (process.platform !== "win32") assert.equal(statSync(file).mode & 0o777, 0o600);
 
   // The saved key is used by later commands, and whoami shows it masked.
@@ -230,6 +253,11 @@ test("login reads the key from stdin and rejects a bad one without saving", asyn
   assert.equal(bad.code, 1);
   assert.match(bad.stderr, /rejected that API key/);
   assert.throws(() => statSync(join(other, ".config", "scrapely", "config.json")));
+});
+
+test("api --help links the endpoint reference", async () => {
+  const { stdout } = await cli(["api", "--help"]);
+  assert.match(stdout, /Endpoints and their fields: https:\/\/app\.scrapely\.co\/documentation/);
 });
 
 test("api GET prints JSON", async () => {

@@ -100,6 +100,13 @@ test("required fields, unknown flags and stray arguments are usage errors", asyn
   await usageError(parse("list_campaigns", ["--limit"]), /--limit needs a value/);
 });
 
+test("common flag mistakes get pointed the right way", async () => {
+  await usageError(parse("get_campaign_detail", ["--campaign", "X"]), /Unknown option --campaign\. Did you mean --campaign-name\?/);
+  await usageError(parse("get_campaign_leads", ["--campaign-name", "X", "--replied", "true"]),
+    /^--replied takes no value: write --replied for yes or --no-replied for no \(got "true"\)\.$/);
+  await usageError(parse("get_campaign_leads", ["--campaign-name", "X", "--no-replied", "false"]), /^--replied takes no value/);
+});
+
 test("global flags are picked up anywhere", async () => {
   const { globals } = await parse("list_campaigns", ["--json", "-y", "--limit", "1"]);
   assert.equal(globals.json, true);

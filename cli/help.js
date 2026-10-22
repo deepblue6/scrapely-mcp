@@ -1,5 +1,6 @@
 // Help text, generated from the tool registry (descriptions + zod .describe()).
 
+import { API_DOCS_URL } from "./agent-guide.js";
 import { describeInputs } from "./schema.js";
 import { BUILTINS, GROUPS, commandName, groupNames, groupTools } from "./registry.js";
 import { colors, terminalWidth, wrap } from "./style.js";
@@ -7,7 +8,8 @@ import { cliText, fieldText, findWith } from "./wording.js";
 
 const GLOBAL_FLAGS = [
   ["--json", "Print raw JSON instead of tables"],
-  ["-y, --yes", "Don't ask \"Continue?\" before commands that change things"],
+  ["-y, --yes", "Don't ask \"Continue?\" before commands that change things (agents: only after the user approves)"],
+  ["--profile <name>", "Use the API key saved under this profile (see scrapely profiles)"],
   ["--debug", "Show technical details when something fails"],
   ["-h, --help", "Show help"],
 ];
@@ -185,7 +187,7 @@ export function commandHelp(tool) {
     out.push("", c.yellow("This sends, spends credits, launches, pauses, deletes or overwrites something in your account."),
       c.yellow("You'll be asked to confirm first; add --yes to skip the question."));
   }
-  out.push("", c.dim("Also: --json, --yes, --debug"));
+  out.push("", c.dim("Also: --json, --yes, --profile <name>, --debug"));
   return out.join("\n");
 }
 
@@ -196,6 +198,7 @@ export function apiHelp() {
     "",
     "Call any Scrapely API endpoint directly and print the JSON response.",
     "For when a command doesn't exist yet. Paths are relative to https://app.scrapely.co/api/v1",
+    `Endpoints and their fields: ${API_DOCS_URL}`,
     "",
     c.bold("Usage"),
     "  scrapely api <METHOD> <path> [--data <json>] [--query key=value ...]",
@@ -225,6 +228,82 @@ export function loginHelp() {
     "  scrapely login --key <key> Pass the key directly (less safe: it stays in",
     "                             your shell history and shows up in ps)",
     "",
+    "Several workspaces? Save each key under a profile name:",
+    "  scrapely login --profile bitvault",
+    "  scrapely campaigns list --profile bitvault",
+    "The first key you save becomes the default. See: scrapely profiles --help",
+    "",
     "Create a key at https://app.scrapely.co/settings/integrations",
+  ].join("\n");
+}
+
+export function whoamiHelp() {
+  return [
+    "scrapely whoami [--profile <name>] [--json]   (or: scrapely status)",
+    "",
+    "Show which API key is in use (masked), which profile it belongs to and where it comes from.",
+    "",
+    "Which key is used, first match wins:",
+    "  1. --profile <name>",
+    "  2. the SCRAPELY_API_KEY environment variable",
+    "  3. the SCRAPELY_PROFILE environment variable (a profile name)",
+    "  4. the default profile (set with: scrapely profiles use <name>)",
+    "  5. the profile named \"default\", if it is the only one",
+  ].join("\n");
+}
+
+export function profilesHelp() {
+  const c = colors(process.stdout);
+  return [
+    c.bold("scrapely profiles"),
+    "",
+    "Keep one API key per Scrapely workspace and switch between them.",
+    "Profile names: lowercase letters, digits, - and _ (up to 32).",
+    "",
+    c.bold("Commands"),
+    rows([
+      ["list", "Show saved profiles (keys are masked) and which one is the default"],
+      ["use <name>", "Make a profile the default"],
+      ["remove <name> *", "Remove a saved profile from this computer"],
+    ], c, 14),
+    "",
+    c.dim("* asks you to confirm first; add --yes to skip the question"),
+    "",
+    c.bold("Examples"),
+    "  scrapely login --profile bitvault          Save a key as profile bitvault",
+    "  scrapely campaigns list --profile bitvault Run one command with it",
+    "  scrapely profiles use bitvault             Use it for every command",
+    "  SCRAPELY_PROFILE=bitvault scrapely ...     Pick a profile from the environment",
+    "",
+    "Run scrapely whoami to see which key and profile are in use.",
+  ].join("\n");
+}
+
+export function setupAgentHelp() {
+  const c = colors(process.stdout);
+  return [
+    c.bold("scrapely setup-agent"),
+    "",
+    "Teach your AI agent to use the Scrapely CLI, with nothing to copy and paste.",
+    "Writes short instructions (built from this version's commands) to:",
+    "  Claude Code   ~/.claude/skills/scrapely/SKILL.md (a skill)",
+    "  AGENTS.md     ./AGENTS.md, read by Codex, Cursor and many others (only the",
+    "                block between <!-- scrapely:start --> and <!-- scrapely:end -->)",
+    "Shows the files and asks before writing. Run it again after upgrading to refresh them.",
+    "",
+    c.bold("Options"),
+    rows([
+      ["--claude", "Only the Claude Code skill"],
+      ["--agents-md", "Only the AGENTS.md block"],
+      ["--project", "Put the skill in this folder's .claude/skills instead of your home folder"],
+      ["--print", "Print the instructions instead of writing anything"],
+      ["--force", "Replace a SKILL.md that scrapely setup-agent didn't write"],
+      ["-y, --yes", "Don't ask before writing"],
+    ], c, 14),
+    "",
+    c.bold("Examples"),
+    "  scrapely setup-agent                  Claude Code skill + ./AGENTS.md",
+    "  scrapely setup-agent --claude --project",
+    "  scrapely setup-agent --print --claude > SKILL.md",
   ].join("\n");
 }

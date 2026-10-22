@@ -93,7 +93,37 @@ Create an API key at [app.scrapely.co/settings/integrations](https://app.scrapel
 - The key is saved in `~/.config/scrapely/config.json` (`%APPDATA%\scrapely\config.json` on Windows), and only your user can read that file.
 - `scrapely whoami` shows which key is in use (only its last 4 characters) and where it comes from.
 - `scrapely logout` removes the saved key.
-- In scripts and CI you can skip `login` and set the `SCRAPELY_API_KEY` environment variable instead. When it is set, it always wins over the saved key.
+- In scripts and CI you can skip `login` and set the `SCRAPELY_API_KEY` environment variable instead. When it is set, it wins over saved keys (unless you pass `--profile`).
+
+### Several workspaces (agencies)
+
+Save one key per workspace under a profile name, then pick it per command or make it the default:
+
+```bash
+scrapely login --profile bitvault
+scrapely campaigns list --profile bitvault
+scrapely profiles use bitvault      # use it by default
+scrapely profiles list              # names, masked keys, which one is the default
+scrapely profiles remove bitvault
+```
+
+The key used is, first match wins: `--profile`, `SCRAPELY_API_KEY`, `SCRAPELY_PROFILE` (a profile name), the default profile, then a profile named `default` if it is the only one. Commands that change things show the profile in their "Continue?" question (and print it when you pass `--yes`), so you always know which workspace you're changing. When `SCRAPELY_API_KEY` is set while you have saved profiles, every command prints a note saying it is being used instead.
+
+### Use with AI agents (Claude Code, Codex, Cursor)
+
+One command teaches your coding agent to use the CLI, with nothing to copy and paste:
+
+```bash
+scrapely setup-agent
+```
+
+It writes a Claude Code skill to `~/.claude/skills/scrapely/SKILL.md` and a Scrapely section to `./AGENTS.md` (read by Codex, Cursor and many other agents), after showing you the files and asking first. In `AGENTS.md` it only touches the block between `<!-- scrapely:start -->` and `<!-- scrapely:end -->`, so running it again (for example after upgrading) updates that block and leaves the rest of the file alone.
+
+- `--claude` or `--agents-md` writes just one of them; `--project` puts the skill in this project's `.claude/skills` instead of your home folder.
+- `--print` shows the instructions without writing anything.
+- A `SKILL.md` you wrote yourself is never replaced unless you add `--force`.
+
+The instructions tell your agent to check `scrapely whoami` first, to ask you to run `scrapely login` yourself (never to paste a key into the chat), to use `--json`, and to get your explicit OK before anything that sends, spends, launches, pauses or deletes. For agencies, they tell it to pick the workspace with `--profile <name>` and always say which profile it used. Then try asking your agent: "show me my Scrapely campaigns".
 
 ### Your first 5 minutes
 
@@ -227,7 +257,7 @@ scrapely api POST /campaigns/pause --data '{"campaign_name":"Agency owners","is_
 | `scrapely webhooks test` | Send a sample event to one or all of your webhook URLs |  |
 | `scrapely feedback send` | Report a bug or a confusing tool to the Scrapely team |  |
 
-Plus `scrapely login`, `scrapely logout`, `scrapely whoami`, `scrapely api` and `scrapely help`. Run any command with `--help` to see all of its options.
+Plus `scrapely login`, `scrapely logout`, `scrapely whoami`, `scrapely profiles`, `scrapely api` and `scrapely help`. Run any command with `--help` to see all of its options.
 
 ## Available Tools
 
