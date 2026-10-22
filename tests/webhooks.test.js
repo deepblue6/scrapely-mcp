@@ -19,7 +19,6 @@ before(async () => {
   api = await startMockApi({
     "GET /webhooks": {
       enabled: true,
-      all_replies: false,
       webhooks: [
         { url: LONG_URL, has_key: true, key_preview: "…k123" },
         { url: "https://93.184.215.14/hook", has_key: false, key_preview: null },
@@ -37,7 +36,7 @@ before(async () => {
       body: withKey({ webhook: { url: body.url, has_key: !body.remove_key, key_preview: body.remove_key ? null : "…0000" } }, body.generate_key),
     }),
     "DELETE /webhooks": ({ body }) => ({ body: { success: true, url: body.url } }),
-    "PATCH /webhooks/settings": ({ body }) => ({ body: { enabled: body.enabled ?? true, all_replies: body.all_replies ?? false, webhooks: [], events: [] } }),
+    "PATCH /webhooks/settings": ({ body }) => ({ body: { enabled: body.enabled ?? true, webhooks: [], events: [] } }),
     "POST /webhooks/test": ({ body }) => ({
       body: {
         results: body.url === "https://93.184.215.15/down"
@@ -59,7 +58,7 @@ test("webhooks list: settings first, then URL and KEY columns, URLs never cut", 
   assert.equal(code, 0);
   assert.equal(sentTo("GET", "/webhooks").length, 1);
   assert.match(stdout, /^enabled\s+yes$/m);
-  assert.match(stdout, /^all_replies\s+no$/m);
+  assert.doesNotMatch(stdout, /all_replies/);
   assert.match(stdout, /^ {2}URL\s+KEY$/m);
   assert.ok(stdout.includes(LONG_URL), "full URL even on a narrow terminal");
   assert.match(stdout, /…k123/);
@@ -159,12 +158,12 @@ test("webhooks settings asks first and sends only the switches given", async () 
   const { code } = await cli(["webhooks", "settings", "--no-enabled", "--yes"]);
   assert.equal(code, 0);
   assert.deepEqual(sentTo("PATCH", "/webhooks/settings").at(-1).body, { enabled: false });
-  await cli(["webhooks", "settings", "--all-replies", "--yes"]);
-  assert.deepEqual(sentTo("PATCH", "/webhooks/settings").at(-1).body, { all_replies: true });
+  await cli(["webhooks", "settings", "--enabled", "--yes"]);
+  assert.deepEqual(sentTo("PATCH", "/webhooks/settings").at(-1).body, { enabled: true });
 
   const empty = await cli(["webhooks", "settings", "--yes"]);
   assert.equal(empty.code, 2);
-  assert.match(empty.stderr, /Pass --enabled\/--no-enabled or --all-replies\/--no-all-replies/);
+  assert.match(empty.stderr, /--enabled/);
 });
 
 test("webhooks test sends to all URLs, or just the one given", async () => {

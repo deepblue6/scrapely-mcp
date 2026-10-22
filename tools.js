@@ -802,7 +802,7 @@ const generatedKeyNotice = (data) => (data && typeof data.key === "string" ? GEN
 const webhookTools = [
   {
     name: "list_webhooks",
-    description: "List your webhook URLs and settings: whether webhooks are on (enabled), the all_replies setting, each URL with whether it has an X-Webhook-Key (only the last 4 characters are shown, never the full key), and the events Scrapely can send.",
+    description: "List your webhook URLs and settings: whether webhooks are on (enabled), each URL with whether it has an X-Webhook-Key (only the last 4 characters are shown, never the full key), and the events Scrapely can send.",
     inputs: {},
     run: (args, call) => call("GET", "/webhooks"),
     cli: { group: "webhooks", action: "list", summary: "List your webhook URLs, keys (last 4 characters only) and settings" },
@@ -872,24 +872,17 @@ const webhookTools = [
   },
   {
     name: "update_webhook_settings",
-    description: "Turn webhooks on or off, or change the all_replies setting (same switches as Settings > Integrations). Turning webhooks off stops reply, DM and account events; new_follower / new_following events from follower listeners are still sent (remove or pause listeners to stop those). Pass at least one setting.",
+    description: "Turn webhooks on or off (same switch as Settings > Integrations). Off stops reply, DM and account events. Which events send a webhook (for example back-and-forth replies) is chosen per event in Settings > Notifications in the dashboard. Follower listener events are separate and not affected.",
     inputs: {
-      enabled: z.boolean().optional().describe("true to send webhook events, false to stop reply, DM and account events"),
-      all_replies: z.boolean().optional().describe("The dashboard's 'all replies' switch. Saved on your account; which reply events are sent currently follows your notification preferences"),
+      enabled: z.boolean().describe("true to send webhook events, false to stop them"),
     },
-    run: ({ enabled, all_replies }, call) => {
-      const body = {};
-      if (enabled !== undefined) body.enabled = enabled;
-      if (all_replies !== undefined) body.all_replies = all_replies;
-      return call("PATCH", "/webhooks/settings", body);
-    },
+    run: ({ enabled }, call) => call("PATCH", "/webhooks/settings", { enabled }),
     cli: {
       group: "webhooks",
       action: "settings",
       summary: "Turn webhooks on or off",
       example: "--enabled",
-      validate: ({ enabled, all_replies }) =>
-        (enabled === undefined && all_replies === undefined ? "Pass --enabled/--no-enabled or --all-replies/--no-all-replies." : null),
+      validate: ({ enabled }) => (enabled === undefined ? "Pass --enabled or --no-enabled." : null),
     },
     destructive: true,
   },
