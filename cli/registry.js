@@ -20,7 +20,7 @@ export const GROUPS = {
   people: "Search the Scrapely People database",
   enrich: "Find a person's X profile or email",
   tweets: "Schedule tweets",
-  webhooks: "Webhook event reference",
+  webhooks: "Webhook URLs, keys, settings and event reference",
   feedback: "Report a bug or idea to the Scrapely team",
 };
 

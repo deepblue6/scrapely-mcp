@@ -22,6 +22,9 @@ function requireKey() {
 
 const isPlainWord = (text) => /^[\w@.:/+-]+$/.test(text);
 
+// Flags whose values are secrets: the confirmation never echoes them.
+const SECRET_INPUTS = new Set(["key"]);
+
 // --name "October launch"  --lead-source-ids a1,b2  --leads [120 items]: what the confirmation shows.
 function summarizeArgs(args, tool) {
   const flagFor = Object.fromEntries(describeInputs(tool.inputs).map((f) => [f.key, f.flag]));
@@ -29,6 +32,7 @@ function summarizeArgs(args, tool) {
     const flag = `--${flagFor[key] || key}`;
     if (typeof value === "boolean") return value ? flag : flag.replace(/^--/, "--no-");
     if (value === null) return flag.replace(/^--/, "--no-");
+    if (SECRET_INPUTS.has(key)) return `${flag} ****`;
     if (Array.isArray(value)) {
       const joined = value.every((v) => typeof v !== "object") ? value.join(",") : "";
       if (joined && joined.length <= 40) return `${flag} ${isPlainWord(joined) ? joined : JSON.stringify(joined)}`;
@@ -56,6 +60,8 @@ export async function runTool(tool, argv) {
 
   const data = await tool.run(args, (method, path, body, query) => apiCall(key, method, path, body, query));
   printResult(data, globals);
+  const notice = tool.cli.notice?.(data);
+  if (notice) process.stderr.write(`${colors(process.stderr).yellow(notice)}\n`);
 
   // Chunked tools (imports, add-leads) report a mid-way failure inside the result instead of throwing.
   if (data && typeof data === "object" && typeof data.error === "string") process.exitCode = 1;

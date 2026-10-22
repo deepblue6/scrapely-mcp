@@ -14,6 +14,8 @@
 //                        generated one (required flags only) wouldn't work as is;
 //                        summary: one line for `scrapely <group> --help`, when the
 //                        description's first sentence doesn't fit the CLI;
+//                        notice(data): a line printed to stderr after the result
+//                        (e.g. "save this key now"), or null;
 //                        defaults: { input: value } so a flag can be left out;
 //                        aliases: { action: { args, summary } } for extra commands that
 //                        run the same tool with some inputs fixed (campaigns resume)
@@ -780,6 +782,118 @@ const listenerTools = [
   },
 ];
 
+// ─── WEBHOOK SETTINGS ────────────────────────────────────────────────────────
+
+const WEBHOOK_URL_HINT = "The webhook URL exactly as list_webhooks shows it";
+const WEBHOOK_KEY_HINT = "Your own secret. Scrapely sends it in the X-Webhook-Key header of every event so your endpoint can check the request came from Scrapely";
+const GENERATED_KEY_NOTE = "Save this key now: Scrapely won't show it again. Your endpoint receives it in the X-Webhook-Key header.";
+
+// Shown after a command whose response carries a newly generated key.
+const generatedKeyNotice = (data) => (data && typeof data.key === "string" ? GENERATED_KEY_NOTE : null);
+
+const webhookTools = [
+  {
+    name: "list_webhooks",
+    description: "List your webhook URLs and settings: whether webhooks are on (enabled), the all_replies setting, each URL with whether it has an X-Webhook-Key (only the last 4 characters are shown, never the full key), and the events Scrapely can send.",
+    inputs: {},
+    run: (args, call) => call("GET", "/webhooks"),
+    cli: { group: "webhooks", action: "list", summary: "List your webhook URLs, keys (last 4 characters only) and settings" },
+  },
+  {
+    name: "add_webhook",
+    description: "Add a webhook URL. Scrapely will POST events (replies, DMs sent/seen, account disconnects, new followers) to it as JSON. Max 10 URLs. Optionally protect it with a key sent in the X-Webhook-Key header: pass your own key, or generate_key true to have Scrapely create a strong one. A generated key is returned once in this response and never shown again: save it, and show it to the user, right away.",
+    inputs: {
+      url: z.string().describe("Public http(s) URL that will receive events, e.g. https://hooks.example.com/scrapely"),
+      key: z.string().optional().describe(WEBHOOK_KEY_HINT),
+      generate_key: z.boolean().optional().describe("true to have Scrapely generate a strong key and return it once (instead of passing key)"),
+    },
+    run: ({ url, key, generate_key }, call) => {
+      const body = { url };
+      if (key !== undefined) body.key = key;
+      if (generate_key) body.generate_key = true;
+      return call("POST", "/webhooks", body);
+    },
+    cli: {
+      group: "webhooks",
+      action: "add",
+      example: "--url https://hooks.example.com/scrapely --generate-key",
+      validate: ({ key, generate_key }) => (key !== undefined && generate_key ? "Pass --key or --generate-key, not both." : null),
+      notice: generatedKeyNotice,
+    },
+  },
+  {
+    name: "update_webhook_key",
+    description: "Change, rotate or remove the X-Webhook-Key of an existing webhook URL. Pass exactly one of: key (your own new key), generate_key true (Scrapely generates one, returned once and never shown again) or remove_key true. The old key stops being sent immediately, so update your endpoint to accept the new one.",
+    inputs: {
+      url: z.string().describe(WEBHOOK_URL_HINT),
+      key: z.string().optional().describe("New key to send in the X-Webhook-Key header"),
+      generate_key: z.boolean().optional().describe("true to have Scrapely generate a new strong key and return it once"),
+      remove_key: z.boolean().optional().describe("true to stop sending an X-Webhook-Key header to this URL"),
+    },
+    run: ({ url, key, generate_key, remove_key }, call) => {
+      const body = { url };
+      if (key !== undefined) body.key = key;
+      if (generate_key) body.generate_key = true;
+      if (remove_key) body.remove_key = true;
+      return call("PATCH", "/webhooks", body);
+    },
+    cli: {
+      group: "webhooks",
+      action: "set-key",
+      summary: "Change, rotate or remove a webhook's key",
+      example: "--url https://hooks.example.com/scrapely --generate-key",
+      validate: ({ key, generate_key, remove_key }) =>
+        [key !== undefined, Boolean(generate_key), Boolean(remove_key)].filter(Boolean).length === 1
+          ? null
+          : "Pass exactly one of --key, --generate-key or --remove-key.",
+      notice: generatedKeyNotice,
+    },
+    destructive: true,
+  },
+  {
+    name: "remove_webhook",
+    description: "Remove a webhook URL. Scrapely stops sending events to it right away.",
+    inputs: {
+      url: z.string().describe(WEBHOOK_URL_HINT),
+    },
+    run: ({ url }, call) => call("DELETE", "/webhooks", { url }),
+    cli: { group: "webhooks", action: "remove", example: "--url https://hooks.example.com/scrapely" },
+    destructive: true,
+  },
+  {
+    name: "update_webhook_settings",
+    description: "Turn webhooks on or off, or change the all_replies setting (same switches as Settings > Integrations). Turning webhooks off stops reply, DM and account events; new_follower / new_following events from follower listeners are still sent (remove or pause listeners to stop those). Pass at least one setting.",
+    inputs: {
+      enabled: z.boolean().optional().describe("true to send webhook events, false to stop reply, DM and account events"),
+      all_replies: z.boolean().optional().describe("The dashboard's 'all replies' switch. Saved on your account; which reply events are sent currently follows your notification preferences"),
+    },
+    run: ({ enabled, all_replies }, call) => {
+      const body = {};
+      if (enabled !== undefined) body.enabled = enabled;
+      if (all_replies !== undefined) body.all_replies = all_replies;
+      return call("PATCH", "/webhooks/settings", body);
+    },
+    cli: {
+      group: "webhooks",
+      action: "settings",
+      summary: "Turn webhooks on or off",
+      example: "--enabled",
+      validate: ({ enabled, all_replies }) =>
+        (enabled === undefined && all_replies === undefined ? "Pass --enabled/--no-enabled or --all-replies/--no-all-replies." : null),
+    },
+    destructive: true,
+  },
+  {
+    name: "test_webhook",
+    description: "Send a sample new_reply event to one of your webhook URLs, or to all of them, to check your endpoint receives it. Works even while webhooks are turned off. Returns, per URL, whether it succeeded and the HTTP status your endpoint answered with.",
+    inputs: {
+      url: z.string().optional().describe(`${WEBHOOK_URL_HINT}. Leave out to test every URL`),
+    },
+    run: ({ url }, call) => call("POST", "/webhooks/test", url === undefined ? {} : { url }),
+    cli: { group: "webhooks", action: "test", summary: "Send a sample event to one or all of your webhook URLs" },
+  },
+];
+
 // ─── WEBHOOKS, ENRICHMENT, PEOPLE ────────────────────────────────────────────
 
 const dataTools = [
@@ -795,6 +909,7 @@ const dataTools = [
     }),
     cli: { group: "webhooks", action: "info" },
   },
+  ...webhookTools,
   {
     name: "enrich_twitter",
     description: "Find a person's Twitter/X profile from their name and company.",

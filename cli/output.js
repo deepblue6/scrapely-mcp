@@ -14,6 +14,7 @@ const COLUMN_PRESETS = {
   scheduled_tweets: ["id", "account_handle", "status", "scheduled_at", "tweet_text"],
   listeners: ["id", "target_handle", "listen_followers", "listen_following", "is_active", "last_error"],
   events: ["event", "detected_at", "target_handle", "user.screen_name", "user.name", "user.followers_count"],
+  webhooks: ["url", "key_preview"],
 };
 
 const LABELS = {
@@ -23,10 +24,15 @@ const LABELS = {
   "last_message.text": "LAST MESSAGE",
   "user.screen_name": "PERSON",
   "user.followers_count": "FOLLOWERS",
+  key_preview: "KEY",
 };
 
+// What an empty cell says in these columns, instead of "-".
+const EMPTY_TEXT = { key_preview: "none" };
+
 // Columns people copy into the next command (IDs, handles): never cut short.
-const isIdentifier = (path, key) => /(^|[._])id$|handle$|screen_name$/.test(path) || (key === "campaigns" && path === "name");
+const isIdentifier = (path, key) => /(^|[._])id$|handle$|screen_name$/.test(path) ||
+  (key === "campaigns" && path === "name") || (key === "webhooks" && path === "url");
 
 const AUTO_FIRST = ["id", "name", "handle", "twitter_handle", "status"];
 const MAX_AUTO_COLUMNS = 8;
@@ -112,7 +118,8 @@ export function renderTable(rows, key, { indent = "", c = colors(process.stdout)
   if (columns.length === 0) return rows.map((row) => indent + stripControl(JSON.stringify(row))).join("\n");
 
   const header = columns.map(label);
-  const cells = rows.map((row) => columns.map((col) => formatValue(get(row, col)).replace(/\s+/g, " ")));
+  const cell = (row, col) => (get(row, col) == null && EMPTY_TEXT[col]) || formatValue(get(row, col));
+  const cells = rows.map((row) => columns.map((col) => cell(row, col).replace(/\s+/g, " ")));
   const ids = columns.map((col) => isIdentifier(col, key));
   const { shown, widths } = layout(header, cells, ids, terminalWidth() - indent.length);
 
