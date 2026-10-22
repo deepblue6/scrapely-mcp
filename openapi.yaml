@@ -1302,6 +1302,8 @@ paths:
                 $ref: '#/components/schemas/WebhookConfig'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
     post:
       tags: [Webhook Settings]
       summary: Add a webhook URL
@@ -1334,6 +1336,14 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: This URL is already added, or the webhook list changed while saving (for example from the dashboard; retry).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
     patch:
       tags: [Webhook Settings]
       summary: Change, rotate or remove a webhook key
@@ -1388,6 +1398,13 @@ paths:
       responses:
         '200':
           description: Webhook removed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  url: { type: string, description: The webhook URL that was removed }
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -1417,6 +1434,7 @@ paths:
           application/json:
             schema:
               type: object
+              minProperties: 1
               properties:
                 enabled: { type: boolean }
                 all_replies: { type: boolean }
@@ -1431,6 +1449,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /webhooks/test:
     post:
@@ -1752,6 +1772,9 @@ components:
           description: Event names your webhooks can receive, with a one-line description each
           items:
             type: object
+            properties:
+              name: { type: string, example: new_reply }
+              description: { type: string }
 
     WebhookChangeResponse:
       type: object
@@ -1762,6 +1785,10 @@ components:
           type: string
           description: Only when generate_key was true. Shown once; save it now.
           example: whk_3q2-7wEXAMPLEonlyEXAMPLEonlyEXAMPLEonly
+        note:
+          type: string
+          description: Only alongside key. A reminder that the key won't be shown again.
+          example: Save this key now. It will not be shown again.
 
     Account:
       type: object
