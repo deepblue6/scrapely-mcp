@@ -54,6 +54,8 @@ tags:
     description: Schedule and manage automated tweets
   - name: Follower Listeners
     description: Watch X accounts for new followers/following (sent as new_follower / new_following webhooks)
+  - name: Webhook Settings
+    description: Add, remove and test your webhook URLs, manage their X-Webhook-Key, turn webhooks on or off
 
 paths:
   /accounts:
@@ -1282,6 +1284,195 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /webhooks:
+    get:
+      tags: [Webhook Settings]
+      summary: List webhook URLs and settings
+      description: |
+        Your webhook URLs, whether webhooks are on, and the events Scrapely can send.
+        Keys are never returned: each URL shows only whether it has an `X-Webhook-Key`
+        and its last 4 characters (just `…` for keys of 8 characters or fewer).
+      operationId: listWebhooks
+      responses:
+        '200':
+          description: Webhook configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookConfig'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Webhook Settings]
+      summary: Add a webhook URL
+      description: |
+        Add one webhook URL (max 10). The URL must be public `http`/`https`: private and
+        internal addresses are rejected, and the same URL can't be added twice.
+        Optionally set the key sent in the `X-Webhook-Key` header: pass your own `key`, or
+        `generate_key: true` to have Scrapely create a strong one. A generated key is returned
+        once in this response and never again.
+      operationId: addWebhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url: { type: string, format: uri, example: 'https://hooks.example.com/scrapely' }
+                key: { type: string, description: "Your own key. Can't be combined with generate_key." }
+                generate_key: { type: boolean, description: "true to have Scrapely generate a key and return it once." }
+      responses:
+        '201':
+          description: Webhook added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookChangeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags: [Webhook Settings]
+      summary: Change, rotate or remove a webhook key
+      description: |
+        Pass exactly one of `key`, `generate_key: true` or `remove_key: true`. The old key stops
+        being sent immediately. A generated key is returned once in this response and never again.
+      operationId: updateWebhookKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url: { type: string, description: "The webhook URL as GET /webhooks returns it" }
+                key: { type: string, description: "New key" }
+                generate_key: { type: boolean, description: "true to generate a new key" }
+                remove_key: { type: boolean, description: "true to stop sending an X-Webhook-Key header" }
+      responses:
+        '200':
+          description: Key updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookChangeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: The webhook list changed while saving (for example from the dashboard). Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags: [Webhook Settings]
+      summary: Remove a webhook URL
+      operationId: removeWebhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url: { type: string, description: "The webhook URL as GET /webhooks returns it" }
+      responses:
+        '200':
+          description: Webhook removed
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: The webhook list changed while saving (for example from the dashboard). Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /webhooks/settings:
+    patch:
+      tags: [Webhook Settings]
+      summary: Turn webhooks on or off
+      description: |
+        Send at least one of `enabled` and `all_replies`. Turning webhooks off stops reply, DM and
+        account events; `new_follower` / `new_following` events from follower listeners are still
+        sent. `all_replies` mirrors the dashboard switch of the same name; which reply events are
+        sent currently follows your notification preferences.
+      operationId: updateWebhookSettings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled: { type: boolean }
+                all_replies: { type: boolean }
+      responses:
+        '200':
+          description: Settings updated (same shape as GET /webhooks)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookConfig'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /webhooks/test:
+    post:
+      tags: [Webhook Settings]
+      summary: Send a test event
+      description: |
+        Sends a sample `new_reply` event to one of your saved webhook URLs, or to all of them
+        when `url` is left out. Works even while webhooks are turned off. Rate limited per API key.
+      operationId: testWebhook
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url: { type: string, description: "One saved webhook URL. Leave out to test all." }
+      responses:
+        '200':
+          description: Result per URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        url: { type: string }
+                        ok: { type: boolean }
+                        status: { type: integer, nullable: true, description: "HTTP status your endpoint answered with" }
+                        error: { type: string, description: "Present when ok is false, e.g. \"HTTP 500\" or \"Webhook timed out\"" }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
   /scheduled-tweets:
     get:
       tags: [Scheduled Tweets]
@@ -1535,6 +1726,42 @@ components:
           type: string
         message:
           type: string
+
+    WebhookSummary:
+      type: object
+      properties:
+        url: { type: string }
+        has_key: { type: boolean }
+        key_preview:
+          type: string
+          nullable: true
+          description: The key's last 4 characters after "…" (just "…" for short keys), or null without a key. Never the full key.
+          example: "…a1b2"
+
+    WebhookConfig:
+      type: object
+      properties:
+        enabled: { type: boolean, description: "Whether reply, DM and account events are sent" }
+        all_replies: { type: boolean }
+        webhooks:
+          type: array
+          items:
+            $ref: '#/components/schemas/WebhookSummary'
+        events:
+          type: array
+          description: Event names your webhooks can receive, with a one-line description each
+          items:
+            type: object
+
+    WebhookChangeResponse:
+      type: object
+      properties:
+        webhook:
+          $ref: '#/components/schemas/WebhookSummary'
+        key:
+          type: string
+          description: Only when generate_key was true. Shown once; save it now.
+          example: whk_3q2-7wEXAMPLEonlyEXAMPLEonlyEXAMPLEonly
 
     Account:
       type: object

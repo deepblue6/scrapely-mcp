@@ -219,6 +219,12 @@ scrapely api POST /campaigns/pause --data '{"campaign_name":"Agency owners","is_
 | `scrapely tweets list` | List scheduled tweets with optional filters |  |
 | `scrapely tweets cancel` | Cancel a pending scheduled tweet | yes |
 | `scrapely webhooks info` | Get documentation for webhook events and payload structure |  |
+| `scrapely webhooks list` | List your webhook URLs, keys (last 4 characters only) and settings |  |
+| `scrapely webhooks add` | Add a webhook URL, optionally with your own key or a generated one (`--generate-key`, shown once) |  |
+| `scrapely webhooks set-key` | Change, rotate or remove a webhook's key | yes |
+| `scrapely webhooks remove` | Remove a webhook URL | yes |
+| `scrapely webhooks settings` | Turn webhooks on or off | yes |
+| `scrapely webhooks test` | Send a sample event to one or all of your webhook URLs |  |
 | `scrapely feedback send` | Report a bug or a confusing tool to the Scrapely team |  |
 
 Plus `scrapely login`, `scrapely logout`, `scrapely whoami`, `scrapely api` and `scrapely help`. Run any command with `--help` to see all of its options.
@@ -271,6 +277,12 @@ Plus `scrapely login`, `scrapely logout`, `scrapely whoami`, `scrapely api` and 
 | `get_listener_events` | Query detected new followers/following with filters (watched handle, type, date range, handle, keyword, follower count, verified) |
 | `remove_listener` | Stop watching an account and delete its listener |
 | `get_webhook_info` | Get webhook event types and payload structure docs |
+| `list_webhooks` | List webhook URLs (key previews only, never full keys), on/off settings and event names |
+| `add_webhook` | Add a webhook URL (max 10), optionally with an X-Webhook-Key: your own, or generated and shown once |
+| `update_webhook_key` | Change, rotate (generate) or remove a webhook's X-Webhook-Key |
+| `remove_webhook` | Remove a webhook URL |
+| `update_webhook_settings` | Turn webhooks on or off (follower-listener events keep sending) |
+| `test_webhook` | Send a sample event to one or all webhook URLs and report each result |
 | `schedule_tweet` | Schedule a tweet for later |
 | `list_scheduled_tweets` | List scheduled tweets with filters |
 | `cancel_scheduled_tweet` | Cancel a pending scheduled tweet |
@@ -292,6 +304,7 @@ Once connected to Claude, you can say things like:
 - "Find the email for @elonmusk"
 - "Pause DM sending on my backup account"
 - "Watch @naval for new followers and send them to my webhook"
+- "Add https://hooks.example.com/scrapely as a webhook with a generated key, then send it a test event"
 
 ## Self-Hosting the Remote Server
 
