@@ -3,6 +3,7 @@
 import { describeInputs } from "./schema.js";
 import { BUILTINS, GROUPS, commandName, groupNames, groupTools } from "./registry.js";
 import { colors, terminalWidth, wrap } from "./style.js";
+import { cliText, fieldText, findWith } from "./wording.js";
 
 const GLOBAL_FLAGS = [
   ["--json", "Print raw JSON instead of tables"],
@@ -59,9 +60,13 @@ function sampleJson(schema) {
   }
 }
 
-function fieldNotes(field, schema) {
+function fieldNotes(field, schema, tool) {
   const notes = [];
-  if (field.kind === "boolean") notes.push(`--${field.flag} for yes, --no-${field.flag} for no`);
+  const found = findWith(field, tool);
+  if (found) notes.push(found);
+  if (field.kind === "boolean" && !fieldText(field).includes(`--${field.flag}`)) {
+    notes.push(`--${field.flag} for yes, --no-${field.flag} for no`);
+  }
   if (field.kind === "enum") notes.push(`One of: ${field.values.join(", ")}`);
   if (field.kind === "list") notes.push(`Repeat the flag or separate with commas (for a value with a comma: '["a, b"]')`);
   if (field.kind === "json") {
@@ -135,7 +140,7 @@ export function groupHelp(group) {
   const c = colors(process.stdout);
   const list = groupTools(group).map((t) => [
     t.cli.action + (t.destructive ? " *" : ""),
-    firstSentence(t.description),
+    t.cli.summary || cliText(firstSentence(t.description)),
   ]);
   const anyDestructive = groupTools(group).some((t) => t.destructive);
   return [
@@ -152,14 +157,14 @@ export function groupHelp(group) {
 export function commandHelp(tool) {
   const c = colors(process.stdout);
   const fields = describeInputs(tool.inputs);
-  const toRow = (f) => [flagUsage(f), f.description, fieldNotes(f, tool.inputs[f.key])];
+  const toRow = (f) => [flagUsage(f), fieldText(f), fieldNotes(f, tool.inputs[f.key], tool)];
   const required = fields.filter((f) => !f.optional);
   const optional = fields.filter((f) => f.optional);
 
   const usage = [`scrapely ${commandName(tool)}`, ...required.map(flagUsage), optional.length ? "[options]" : ""]
     .filter(Boolean).join(" ");
 
-  const out = [c.bold(`scrapely ${commandName(tool)}`), "", wrap(tool.description, width()), "", c.bold("Usage"), wrap(usage, width(), "  ")];
+  const out = [c.bold(`scrapely ${commandName(tool)}`), "", wrap(tool.cli.description || cliText(tool.description), width()), "", c.bold("Usage"), wrap(usage, width(), "  ")];
   const nameWidth = Math.max(0, ...fields.map((f) => flagUsage(f).length)); // same column in both sections
   if (required.length) out.push("", c.bold("Required"), rows(required.map(toRow), c, nameWidth));
   if (optional.length) out.push("", c.bold("Options"), rows(optional.map(toRow), c, nameWidth));

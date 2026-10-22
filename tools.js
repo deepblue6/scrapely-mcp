@@ -8,6 +8,10 @@
 //   cli                - { group, action } -> `scrapely <group> <action>`, plus optional
 //                        validate(args): a message (in CLI flag terms) when the input
 //                        can't work, checked before asking or calling the API;
+//                        description: replaces the MCP description in CLI help, for
+//                        the rare one that can't be reworded automatically;
+//                        summary: one line for `scrapely <group> --help`, when the
+//                        description's first sentence doesn't fit the CLI;
 //                        defaults: { input: value } so a flag can be left out;
 //                        aliases: { action: { args, summary } } for extra commands that
 //                        run the same tool with some inputs fixed (campaigns resume)
@@ -226,7 +230,7 @@ const scrapingTools = [
       offset: z.number().optional().describe("Pagination offset"),
     },
     run: ({ id, limit, offset }, call) => call("GET", "/scraping-sources", null, { id, limit, offset }),
-    cli: { group: "sources", action: "list" },
+    cli: { group: "sources", action: "list", summary: "List your lead sources (IDs, status, lead counts)" },
   },
   {
     name: "get_scraping_source_leads",
@@ -309,6 +313,7 @@ function uploadMediaTool(hosted) {
     cli: {
       group: "media",
       action: "upload",
+      description: `Upload an image to attach to campaign DMs or follow-ups. Pass exactly one of --url, --base64${hosted ? "" : " or --file-path"}. Prints a media_url: use it as "media_url" in --message-variants or --followups of scrapely campaigns launch, launch-import or update. JPEG, PNG, GIF or WebP, up to 5MB.`,
       validate: ({ url, base64, file_path }) => {
         if ([url, base64, file_path].filter(Boolean).length !== 1) {
           return `Pass exactly one of --url, --base64${hosted ? "" : " or --file-path"}.`;

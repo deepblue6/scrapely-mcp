@@ -52,6 +52,39 @@ test("command --help shows required flags, enum values and an example", async ()
   assert.match(launch.stdout, /asked to confirm/);
 });
 
+test("help speaks CLI: commands and --flags, never MCP tool names", async () => {
+  const { tools } = await import("../tools.js");
+  const { commands, commandName } = await import("../cli/registry.js");
+  const { commandHelp } = await import("../cli/help.js");
+  const toolNames = new Set(tools.map((t) => t.name));
+  for (const command of commands) {
+    const words = commandHelp(command).match(/\b[a-z0-9]+(?:_[a-z0-9]+)+\b/g) || [];
+    assert.deepEqual(words.filter((w) => toolNames.has(w)), [], `${commandName(command)} mentions an MCP tool`);
+  }
+
+  const remove = await cli(["listeners", "remove", "--help"]);
+  assert.match(remove.stdout, /scrapely listeners update with --no-is-active/);
+  const leads = await cli(["campaigns", "leads", "--help"]);
+  assert.match(leads.stdout, /Only leads who replied \(--replied\) or didn't \(--no-replied\)/);
+  const upload = await cli(["media", "upload", "--help"]);
+  assert.match(upload.stdout, /exactly one of --url, --base64 or\s+--file-path/);
+});
+
+test("help says where IDs come from and fills in undescribed flags", async () => {
+  const dm = await cli(["dm", "send", "--help"]);
+  assert.match(dm.stdout, /--conversation-id <text>[^\n]*\n\s+Find it with: scrapely conversations list/);
+  assert.match(dm.stdout, /Find it with: scrapely accounts list \(ID column\)/);
+  const launch = await cli(["campaigns", "launch", "--help"]);
+  assert.match(launch.stdout, /--lead-source-ids[^\n]*\n\s+Find it with: scrapely sources list/);
+  assert.match(launch.stdout, /--\[no-\]enable-follow\s+Follow each lead's profile before the DM/);
+  const list = await cli(["campaigns", "list", "--help"]);
+  assert.match(list.stdout, /--limit <number>\s+Max results to return/);
+  const get = await cli(["campaigns", "get", "--help"]);
+  assert.doesNotMatch(get.stdout, /Find it with/, "already says to use scrapely campaigns list");
+  const sources = await cli(["sources", "--help"]);
+  assert.match(sources.stdout, /list\s+List your lead sources \(IDs, status, lead counts\)/);
+});
+
 test("--version prints the package version", async () => {
   const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
   const { stdout } = await cli(["--version"]);
