@@ -33,7 +33,7 @@ test("--print shows the skill with frontmatter and the key rules, and writes not
   assert.match(stdout, /--json/);
   assert.match(stdout, /scrapely <group> --help/);
   assert.match(stdout, /--yes/);
-  assert.match(stdout, /explicit approval/);
+  assert.match(stdout, /explicitly\s+approve/);
   assert.match(stdout, /--profile <name>/);
   assert.match(stdout, /scrapely profiles list/);
   assert.match(stdout, /webhook key/);
@@ -61,7 +61,26 @@ test("the command map covers every registry command and marks the ones that need
     const actions = line.split("): ").pop().split(", ");
     assert.ok(actions.includes(command.cli.action + (command.destructive ? "*" : "")), `${command.cli.group} ${command.cli.action}`);
   }
-  assert.match(guide, /- Other: .*profiles.*setup-agent/);
+  assert.match(guide, /- Other: .*profiles \(list, use, remove\*\).*setup-agent/);
+});
+
+test("the guide covers the traps agents hit in trials", () => {
+  const guide = agentGuide(version).replace(/\n\s*/g, " ");
+  assert.match(guide, /scrapely whoami --json/);
+  assert.match(guide, /If `source` is the SCRAPELY_API_KEY environment variable, tell the user/);
+  assert.match(guide, /Run the command without `--yes` first, show the preview to the user/);
+  assert.match(guide, /in an interactive terminal they ask `Continue\? \[y\/N\]` instead/);
+  assert.match(guide, /`people search --count-only` is free and runs without `--yes`/);
+  assert.match(guide, /`dm send`: reply from the account that owns the conversation/);
+  assert.match(guide, /pass `--profile <name>` on every command until they switch/);
+  assert.match(guide, /Don't run `profiles use` unless they ask/);
+  assert.match(guide, /SCRAPELY_API_KEY environment variable beats the default profile/);
+  assert.match(guide, /https:\/\/app\.scrapely\.co\/documentation/);
+  assert.match(guide, /Exit code 2: a wrong command or flag .* or a `\*` command run without `--yes`/);
+  assert.match(guide, /rejected SCRAPELY_API_KEY, they unset it/);
+  // This version can't manage webhooks: point to the dashboard, don't promise a webhook key.
+  assert.match(guide, /Webhooks can't be created from the CLI yet.*settings\/integrations/);
+  assert.doesNotMatch(guide, /newly generated webhook key/);
 });
 
 test("writes the user-level skill and ./AGENTS.md with --yes, and says what it wrote", async () => {
