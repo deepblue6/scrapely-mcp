@@ -1,6 +1,6 @@
 {
   "name": "scrapely-mcp",
-  "version": "1.15.0",
+  "version": "1.15.1",
   "description": "MCP server and command-line tool (scrapely) for the Scrapely Twitter/X DM Automation API \u2014 manage campaigns, scrape leads, send DMs, and more through Claude, any MCP client, or your terminal.",
   "type": "module",
   "main": "server.js",

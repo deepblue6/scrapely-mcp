@@ -816,9 +816,9 @@ const webhookTools = [
   },
   {
     name: "add_webhook",
-    description: "Add a webhook URL. Scrapely will POST events (replies, DMs sent/seen, account disconnects, new followers) to it as JSON. Max 10 URLs. Optionally protect it with a key sent in the X-Webhook-Key header: pass your own key, or generate_key true to have Scrapely create a strong one. A generated key is returned once in this response and never shown again: save it, and show it to the user, right away.",
+    description: "Add a webhook URL. Scrapely will POST events (replies, DMs sent/seen, account disconnects, new followers) to it as JSON. The URL must use a domain name, not an IP address. Max 10 URLs. Optionally protect it with a key sent in the X-Webhook-Key header: pass your own key, or generate_key true to have Scrapely create a strong one. A generated key is returned once in this response and never shown again: save it, and show it to the user, right away.",
     inputs: {
-      url: z.string().describe("Public http(s) URL that will receive events, e.g. https://hooks.example.com/scrapely"),
+      url: z.string().describe("Public http(s) URL with a domain name (not an IP address) that will receive events, e.g. https://hooks.example.com/scrapely"),
       key: webhookKey(`${WEBHOOK_KEY_HINT}. Can't be combined with generate_key`),
       generate_key: z.boolean().optional().describe("true to have Scrapely generate a strong key and return it once (instead of passing your own key)"),
     },
@@ -831,7 +831,7 @@ const webhookTools = [
     cli: {
       group: "webhooks",
       action: "add",
-      description: "Add a webhook URL. Scrapely will POST events (replies, DMs sent/seen, account disconnects, new followers) to it as JSON. Max 10 URLs. Optionally protect it with a key sent in the X-Webhook-Key header: pass your own with --key, or --generate-key to have Scrapely create a strong one. A generated key is printed once and never shown again, so save it right away.",
+      description: "Add a webhook URL. Scrapely will POST events (replies, DMs sent/seen, account disconnects, new followers) to it as JSON. The URL must use a domain name, not an IP address. Max 10 URLs. Optionally protect it with a key sent in the X-Webhook-Key header: pass your own with --key, or --generate-key to have Scrapely create a strong one. A generated key is printed once and never shown again, so save it right away.",
       example: "--url https://hooks.example.com/scrapely --generate-key",
       validate: ({ key, generate_key }) => (key !== undefined && generate_key ? "Pass --key or --generate-key, not both." : null),
       notice: generatedKeyNotice,

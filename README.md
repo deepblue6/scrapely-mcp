@@ -250,7 +250,7 @@ scrapely api POST /campaigns/pause --data '{"campaign_name":"Agency owners","is_
 | `scrapely tweets cancel` | Cancel a pending scheduled tweet | yes |
 | `scrapely webhooks info` | Get documentation for webhook events and payload structure |  |
 | `scrapely webhooks list` | List your webhook URLs, keys (last 4 characters only) and settings |  |
-| `scrapely webhooks add` | Add a webhook URL, optionally with your own key or a generated one (`--generate-key`, shown once) |  |
+| `scrapely webhooks add` | Add a webhook URL (a domain name, not an IP address), optionally with your own key or a generated one (`--generate-key`, shown once) |  |
 | `scrapely webhooks set-key` | Change, rotate or remove a webhook's key | yes |
 | `scrapely webhooks remove` | Remove a webhook URL | yes |
 | `scrapely webhooks settings` | Turn webhooks on or off | yes |

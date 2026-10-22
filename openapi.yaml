@@ -1308,8 +1308,9 @@ paths:
       tags: [Webhook Settings]
       summary: Add a webhook URL
       description: |
-        Add one webhook URL (max 10). The URL must be public `http`/`https`: private and
-        internal addresses are rejected, and the same URL can't be added twice.
+        Add one webhook URL (max 10). The URL must be public `http`/`https` with a domain name:
+        IP addresses (public or private) and internal hostnames are rejected, and the same URL
+        can't be added twice. Redirects are not followed.
         Optionally set the key sent in the `X-Webhook-Key` header: pass your own `key`, or
         `generate_key: true` to have Scrapely create a strong one. A generated key is returned
         once in this response and never again.
