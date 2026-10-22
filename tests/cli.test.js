@@ -200,6 +200,14 @@ test("api non-GET needs confirmation, then sends the body", async () => {
   assert.deepEqual(sentTo("POST", "/dm/send").at(-1).body, { message: "hi" });
 });
 
+test("api refuses paths outside /api/v1", async () => {
+  const before = api.requests.length;
+  const { code, stderr } = await cli(["api", "GET", "../../redir"]);
+  assert.equal(code, 2);
+  assert.match(stderr, /outside the Scrapely API/);
+  assert.equal(api.requests.length, before, "nothing was sent");
+});
+
 test("typos get a suggestion and exit 2", async () => {
   const group = await cli(["campains", "list"]);
   assert.equal(group.code, 2);

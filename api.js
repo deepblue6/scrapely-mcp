@@ -1,7 +1,12 @@
 // Thin client for the Scrapely REST API, shared by the MCP server and the CLI.
 
+export const DEFAULT_API_BASE = "https://app.scrapely.co/api/v1";
+
 // SCRAPELY_API_BASE exists only so tests can point at a local mock server.
-export const API_BASE = process.env.SCRAPELY_API_BASE || "https://app.scrapely.co/api/v1";
+export const API_BASE = process.env.SCRAPELY_API_BASE || DEFAULT_API_BASE;
+
+const { origin: API_ORIGIN, pathname: API_PATH } = new URL(API_BASE);
+const MAX_REDIRECTS = 5;
 
 // Carries the HTTP status and parsed body so callers can react to them.
 // The message keeps the "API Error <status>: <message>" format agents already see.
@@ -12,6 +17,15 @@ export class ApiError extends Error {
     this.status = status;
     this.data = data;
   }
+}
+
+// The full URL for an API path. Throws if the path ("../..", "%2e%2e") would leave /api/v1.
+export function apiUrl(path) {
+  const url = new URL(API_BASE + path);
+  if (url.origin !== API_ORIGIN || !`${url.pathname}/`.startsWith(`${API_PATH}/`)) {
+    throw new Error(`Refusing to call ${url.pathname}: it is outside the Scrapely API (${API_PATH})`);
+  }
+  return url;
 }
 
 // Parse JSON when we can; otherwise keep the raw text (e.g. an HTML error page from a proxy).
@@ -30,15 +44,33 @@ function errorMessage(data, res) {
   return data || res.statusText || "Unknown error";
 }
 
+// fetch, following redirects only within the Scrapely API's own origin.
+// fetch would otherwise forward the X-API-Key header to whatever host a redirect points at.
+async function send(url, options) {
+  for (let hops = 0; ; hops++) {
+    const res = await fetch(url, { ...options, redirect: "manual" });
+    const location = res.headers.get("location");
+    if (res.status < 300 || res.status >= 400 || !location) return res;
+
+    const next = new URL(location, url);
+    if (next.origin !== API_ORIGIN || hops >= MAX_REDIRECTS) {
+      await res.body?.cancel();
+      throw new ApiError(res.status, null, `Redirect to ${next.origin}${next.pathname} was not followed`);
+    }
+    await res.body?.cancel();
+    url = next;
+  }
+}
+
 export async function apiCall(apiKey, method, path, body = null, queryParams = null) {
-  let url = `${API_BASE}${path}`;
+  const url = apiUrl(path);
 
   if (queryParams) {
     const filtered = Object.fromEntries(
       Object.entries(queryParams).filter(([, v]) => v !== undefined && v !== null)
     );
     const qs = new URLSearchParams(filtered).toString();
-    if (qs) url += `?${qs}`;
+    if (qs) url.search = qs;
   }
 
   const options = {
@@ -53,7 +85,7 @@ export async function apiCall(apiKey, method, path, body = null, queryParams = n
     options.body = JSON.stringify(body);
   }
 
-  const res = await fetch(url, options);
+  const res = await send(url, options);
   const text = await res.text();
 
   if (!res.ok) {

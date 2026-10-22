@@ -210,7 +210,7 @@ const scrapingTools = [
       offset: z.number().optional().describe("Pagination offset"),
     },
     run: ({ source_id, limit, offset }, call) =>
-      call("GET", `/scraping-sources/${source_id}/leads`, null, { limit, offset }),
+      call("GET", `/scraping-sources/${encodeURIComponent(source_id)}/leads`, null, { limit, offset }),
     cli: { group: "sources", action: "leads" },
   },
   {

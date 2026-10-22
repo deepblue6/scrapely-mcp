@@ -1,7 +1,7 @@
 // Running a registry tool, and the raw `scrapely api` escape hatch.
 
 import { readFileSync } from "node:fs";
-import { apiCall } from "../api.js";
+import { apiCall, apiUrl } from "../api.js";
 import { parseFlags, parseToolArgs } from "./args.js";
 import { resolveApiKey } from "./config.js";
 import { CliError, UsageError } from "./errors.js";
@@ -93,6 +93,11 @@ export async function runApi(argv) {
 
   // Accept "campaigns", "/campaigns" or a pasted "/api/v1/campaigns".
   const path = "/" + rawPath.replace(/^\/+/, "").replace(/^api\/v1\//, "");
+  try {
+    apiUrl(path);
+  } catch (err) {
+    throw new UsageError(`${err.message}.`, "api");
+  }
   const body = await parseData(values.data);
   if (body !== null && method === "GET") throw new UsageError("GET requests can't have --data. Use --query instead.", "api");
   const query = parseQuery(values.query);
