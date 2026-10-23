@@ -1308,7 +1308,7 @@ paths:
       tags: [Webhook Settings]
       summary: Add a webhook URL
       description: |
-        Add one webhook URL (max 10). The URL must be public `http`/`https` with a domain name:
+        Add one webhook URL (max 10). The URL must be a public `https://` URL with a domain name:
         IP addresses (public or private) and internal hostnames are rejected, and the same URL
         can't be added twice. Redirects are not followed.
         Optionally set the key sent in the `X-Webhook-Key` header: pass your own `key`, or

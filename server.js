@@ -103,7 +103,7 @@ function registerTools(server, getApiKey, sessionLabel = "stdio") {
 
 async function startStdio() {
   const apiKey = process.env.SCRAPELY_API_KEY;
-  const server = new McpServer({ name: "Scrapely", version: "1.15.1" });
+  const server = new McpServer({ name: "Scrapely", version: "1.15.2" });
   registerTools(server, () => apiKey);
 
   const transport = new StdioServerTransport();
@@ -431,7 +431,7 @@ async function startHttp() {
     // New session
     const keyPfx = keyFingerprint(apiKey);
     log("session", "new MCP session", { key: keyPfx, ip });
-    const mcpServer = new McpServer({ name: "Scrapely", version: "1.15.1" });
+    const mcpServer = new McpServer({ name: "Scrapely", version: "1.15.2" });
     registerTools(mcpServer, () => apiKey, keyPfx);
 
     const transport = new StreamableHTTPServerTransport({
