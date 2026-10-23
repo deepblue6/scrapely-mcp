@@ -109,6 +109,8 @@ export function agentGuide(version, level = 1) {
     "the user runs `scrapely login --profile <name>`; for a rejected SCRAPELY_API_KEY, they unset it",
     "(or you pass `--profile <name>`). If it looks like a problem on Scrapely's side, offer to report it",
     "with `scrapely feedback send` (see its `--help`); never include keys, cookies or passwords in it.",
+    "If a command prints \"Update available\" (on stderr), tell the user and offer to update: run",
+    "`npm install -g scrapely-mcp`, then `scrapely setup-agent --yes`, only after they say yes.",
   ].join("\n") + "\n";
 }
 

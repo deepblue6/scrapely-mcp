@@ -195,6 +195,8 @@ scrapely api POST /campaigns/pause --data '{"campaign_name":"Agency owners","is_
 | `-h`, `--help` | Show help |
 | `--version` | Show the installed version |
 
+Once a day the CLI checks npm for a newer version and, if there is one, prints an "Update available" line (on stderr, so `--json` output stays clean). Set `SCRAPELY_NO_UPDATE_CHECK=1` to turn this off; it's also off when `CI` is set.
+
 ### All commands
 
 | Command | What it does | Asks first |

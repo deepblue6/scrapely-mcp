@@ -15,6 +15,7 @@ import { runApi, runTool } from "./cli/run.js";
 import { runSetupAgent } from "./cli/setup-agent.js";
 import { closest } from "./cli/suggest.js";
 import { colors } from "./cli/style.js";
+import { updateNotice } from "./cli/update-check.js";
 
 const { version } = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
 
@@ -136,4 +137,4 @@ Promise.resolve().then(start).catch((err) => {
     if (err.data !== undefined) process.stderr.write(`\nResponse: ${JSON.stringify(err.data, null, 2)}\n`);
   }
   process.exitCode = exitCode;
-});
+}).then(() => updateNotice(version)).catch(() => {});

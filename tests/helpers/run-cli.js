@@ -22,6 +22,14 @@ export function runCli(args, { base, home = tempHome(), env = {}, input = "", cw
   if (env.SCRAPELY_API_KEY) childEnv.SCRAPELY_API_KEY = env.SCRAPELY_API_KEY;
   if (env.NO_COLOR) childEnv.NO_COLOR = env.NO_COLOR;
   if (env.SCRAPELY_PROFILE) childEnv.SCRAPELY_PROFILE = env.SCRAPELY_PROFILE;
+  // Never ask the real npm registry; tests that need the check pass SCRAPELY_UPDATE_URL
+  delete childEnv.CI;
+  delete childEnv.SCRAPELY_NO_UPDATE_CHECK;
+  delete childEnv.SCRAPELY_UPDATE_URL;
+  if (env.SCRAPELY_UPDATE_URL) childEnv.SCRAPELY_UPDATE_URL = env.SCRAPELY_UPDATE_URL;
+  else childEnv.SCRAPELY_NO_UPDATE_CHECK = "1";
+  if (env.SCRAPELY_NO_UPDATE_CHECK) childEnv.SCRAPELY_NO_UPDATE_CHECK = env.SCRAPELY_NO_UPDATE_CHECK;
+  if (env.CI) childEnv.CI = env.CI;
 
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [CLI, ...args], { env: childEnv, cwd });
