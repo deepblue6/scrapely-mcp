@@ -244,6 +244,7 @@ scrapely api POST /campaigns/pause --data '{"campaign_name":"Agency owners","is_
 | `scrapely people schema` | Get the People database table schema — all available columns and their data types |  |
 | `scrapely enrich twitter` | Find a person's Twitter/X profile from their name and company | yes |
 | `scrapely enrich email` | Find a person's email from their Twitter/X handle | yes |
+| `scrapely enrich profile` | Get a public Twitter/X profile from a handle (free) |  |
 | `scrapely enrich credits` | Check your enrichment credit balance |  |
 | `scrapely tweets schedule` | Schedule a tweet to be posted at a specific time | yes |
 | `scrapely tweets list` | List scheduled tweets with optional filters |  |
@@ -297,6 +298,7 @@ Plus `scrapely login`, `scrapely logout`, `scrapely whoami`, `scrapely profiles`
 | `update_crm` | Update notes, deal value, and tags |
 | `enrich_twitter` | Find a person's Twitter profile from name + company |
 | `enrich_email` | Find a person's email from their Twitter handle |
+| `enrich_profile` | Get a public Twitter/X profile from a handle (free) |
 | `get_enrichment_credits` | Check enrichment credit balance |
 | `search_people` | Search the People database of X profiles by bio, location, follower counts and more |
 | `get_people_credits` | Check your People search credit balance |

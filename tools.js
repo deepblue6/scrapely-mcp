@@ -949,6 +949,15 @@ const dataTools = [
     destructive: true,
   },
   {
+    name: "enrich_profile",
+    description: "Get a public Twitter/X profile from a handle. Returns name, bio, links (real destinations, not t.co), follower and following counts, profile picture, verified status and location. Free, no credits used.",
+    inputs: {
+      handle: z.string().describe("Twitter/X handle (e.g. 'elonmusk' or '@elonmusk')"),
+    },
+    run: ({ handle }, call) => call("GET", "/enrich/profile", null, { handle }),
+    cli: { group: "enrich", action: "profile" },
+  },
+  {
     name: "get_enrichment_credits",
     description: "Check your enrichment credit balance.",
     inputs: {},
