@@ -6,7 +6,7 @@ import { colors, displayWidth, padEnd, stripControl, terminalWidth, truncate } f
 // Columns to show for known lists, by the key the API returns the list under.
 // Only columns present in the data are shown; unknown lists get automatic columns.
 const COLUMN_PRESETS = {
-  accounts: ["handle", "name", "id", "account_id", "jobs", "is_paused", "warmup_paused", "dms_sent", "tags"],
+  accounts: ["handle", "name", "id", "account_id", "jobs", "is_paused", "warmup_paused", "dms_sent", "pending_count", "change", "tags"],
   campaigns: ["name", "total", "completed", "pending", "replies", "progress", "is_paused"],
   scraping_sources: ["id", "name", "status", "leads_imported", "progress", "created_at"],
   leads: ["twitter_handle", "name", "status", "account_handle", "replied", "followers_count", "location"],
@@ -21,6 +21,7 @@ const COLUMN_PRESETS = {
 const LABELS = {
   is_paused: "PAUSED",
   warmup_paused: "WARMUP PAUSED",
+  pending_count: "PENDING",
   "receiver.screen_name": "LEAD",
   "last_message.text": "LAST MESSAGE",
   "user.screen_name": "PERSON",

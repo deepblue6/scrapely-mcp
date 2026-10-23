@@ -210,6 +210,42 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /accounts/reassign-pending:
+    post:
+      tags: [Accounts]
+      summary: Reassign pending DMs
+      description: >-
+        Move pending (not yet sent) DMs off some accounts and spread them evenly
+        across others, same as "Reassign pending DMs" in the dashboard. List a
+        source account in to_account_ids too if it should keep its share. Use
+        dry_run first to see what would move. GET /accounts shows each
+        account's pending_count. Limited to 10 calls per minute.
+      operationId: reassignPendingDms
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReassignPendingRequest'
+      responses:
+        '200':
+          description: DMs moved (or, with dry_run, what would move)
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReassignPendingResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
   /accounts/cookies:
     put:
       tags: [Accounts]
@@ -1907,6 +1943,9 @@ components:
           description: Whether the account has Twitter Blue verification
         dms_sent:
           type: integer
+        pending_count:
+          type: integer
+          description: DMs queued on this account but not yet sent (deleted campaigns not counted)
         created_at:
           type: string
           format: date-time
@@ -2214,6 +2253,54 @@ components:
               format: uuid
             handle:
               type: string
+
+    ReassignPendingRequest:
+      type: object
+      required: [from_account_ids, to_account_ids]
+      properties:
+        from_account_ids:
+          type: array
+          description: Account UUIDs to take pending DMs from (1-100)
+          items:
+            type: string
+            format: uuid
+        to_account_ids:
+          type: array
+          description: Account UUIDs to give them to, split evenly (1-100). Include a source to let it keep its share.
+          items:
+            type: string
+            format: uuid
+        dry_run:
+          type: boolean
+          default: false
+          description: true to only report what would move, without changing anything
+
+    ReassignPendingResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        dry_run:
+          type: boolean
+        moved_count:
+          type: integer
+          description: DMs moved (or that would move, with dry_run)
+        message:
+          type: string
+          example: Moved 1240 pending DMs
+        accounts:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              handle:
+                type: string
+              change:
+                type: integer
+                description: Pending DMs gained (positive) or lost (negative)
 
     TogglePauseRequest:
       type: object

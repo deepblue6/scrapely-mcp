@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { tools } from "../tools.js";
 import { GROUPS } from "../cli/registry.js";
 
-test("there are 55 tools", () => {
-  assert.equal(tools.length, 55);
+test("there are 56 tools", () => {
+  assert.equal(tools.length, 56);
 });
 
 test("every tool has a unique `scrapely <group> <action>` command", () => {
@@ -28,7 +28,7 @@ test("exactly the tools that send, spend, launch, pause, delete or overwrite ask
   assert.deepEqual(destructive, [
     "add_lead_source_to_campaign", "add_leads_to_campaign", "cancel_scheduled_tweet", "create_scraping_source",
     "edit_campaign", "enrich_email", "enrich_twitter", "launch_campaign", "launch_import_campaign", "pause_campaign",
-    "remove_account", "remove_listener", "remove_webhook", "schedule_tweet", "search_people", "send_dm", "set_account_tags",
+    "reassign_pending_dms", "remove_account", "remove_listener", "remove_webhook", "schedule_tweet", "search_people", "send_dm", "set_account_tags",
     "toggle_followups_pause", "toggle_pause", "toggle_warmup", "update_listener", "update_webhook_key", "update_webhook_settings",
   ]);
 });

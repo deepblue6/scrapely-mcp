@@ -191,6 +191,25 @@ const accountTools = [
     cli: { group: "accounts", action: "warmup" },
     destructive: true,
   },
+  {
+    name: "reassign_pending_dms",
+    description: "Move pending (not yet sent) DMs off some Twitter/X accounts and split them evenly across others, e.g. when an account is paused, banned or falling behind. List a source in to_account_ids too if it should keep its share. list_accounts shows each account's pending_count. Run with dry_run true first to show the user what would move.",
+    inputs: {
+      from_account_ids: z.array(z.string()).describe("Account UUIDs to take pending DMs from"),
+      to_account_ids: z.array(z.string()).describe("Account UUIDs to give them to, split evenly"),
+      dry_run: z.boolean().optional().describe("true to only report what would move, without changing anything"),
+    },
+    run: ({ from_account_ids, to_account_ids, dry_run }, call) =>
+      call("POST", "/accounts/reassign-pending", { from_account_ids, to_account_ids, dry_run }),
+    cli: {
+      group: "accounts",
+      action: "reassign-pending",
+      summary: "Move pending DMs from some accounts to others, split evenly",
+      example: "--from-account-ids <id> --to-account-ids <id1>,<id2> --dry-run",
+      free: (args) => args.dry_run === true,
+    },
+    destructive: true,
+  },
 ];
 
 // ─── LEAD SCRAPING ───────────────────────────────────────────────────────────

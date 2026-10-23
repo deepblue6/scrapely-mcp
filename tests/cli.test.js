@@ -13,6 +13,10 @@ before(async () => {
     "POST /campaigns/pause": { success: true, message: "Campaign paused" },
     "POST /dm/send": { success: true },
     "POST /people/search": { count: 42 },
+    "POST /accounts/reassign-pending": (req) => ({ status: 200, body: {
+      success: true, dry_run: !!req.body.dry_run, moved_count: 10, message: "Would move 10 pending DMs (nothing changed)",
+      accounts: [{ id: "acc-2", handle: "acme_founder", change: -10 }, { id: "acc-1", handle: "acme_sales", change: 10 }],
+    } }),
     "GET /campaigns/analytics": () => ({ status: 503, body: { error: "Service unavailable" } }),
     "GET /people/credits": () => ({ status: 429, body: { error: "Too many requests" } }),
   });
@@ -149,6 +153,26 @@ test("people search --count-only is free, so it runs without --yes; row searches
   assert.equal(sentTo("POST", "/people/search").length, before + 1, "the row search was not sent");
   const noCount = await cli(["people", "search", "--bio-contains", "founder", "--no-count-only"]);
   assert.equal(noCount.code, 2);
+});
+
+test("accounts reassign-pending: --dry-run runs without --yes, a real move asks first", async () => {
+  const dry = await cli(["accounts", "reassign-pending", "--from-account-ids", "acc-2", "--to-account-ids", "acc-1", "--dry-run"]);
+  assert.equal(dry.code, 0);
+  assert.match(dry.stdout, /CHANGE/);
+  assert.match(dry.stdout, /acme_founder.*-10/);
+  assert.deepEqual(sentTo("POST", "/accounts/reassign-pending").at(-1).body,
+    { from_account_ids: ["acc-2"], to_account_ids: ["acc-1"], dry_run: true });
+
+  const before = sentTo("POST", "/accounts/reassign-pending").length;
+  const real = await cli(["accounts", "reassign-pending", "--from-account-ids", "acc-2", "--to-account-ids", "acc-1,acc-2"]);
+  assert.equal(real.code, 2);
+  assert.match(real.stderr, /needs confirmation/);
+  assert.equal(sentTo("POST", "/accounts/reassign-pending").length, before, "nothing was sent");
+
+  const yes = await cli(["accounts", "reassign-pending", "--from-account-ids", "acc-2", "--to-account-ids", "acc-1,acc-2", "--yes"]);
+  assert.equal(yes.code, 0);
+  assert.deepEqual(sentTo("POST", "/accounts/reassign-pending").at(-1).body,
+    { from_account_ids: ["acc-2"], to_account_ids: ["acc-1", "acc-2"] });
 });
 
 test("the confirmation shows the flags as typed", async () => {

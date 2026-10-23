@@ -212,6 +212,7 @@ Once a day the CLI checks npm for a newer version and, if there is one, prints a
 | `scrapely accounts update-handle` | Update the Twitter/X handle for an existing account |  |
 | `scrapely accounts update-proxy` | Update proxy settings for an existing Twitter/X account |  |
 | `scrapely accounts warmup` | Enable or disable warmup mode for a Twitter/X account | yes |
+| `scrapely accounts reassign-pending` | Move pending DMs from some accounts to others, split evenly (`--dry-run` previews without asking) | yes |
 | `scrapely tags get` | Get tags for a specific account or all accounts |  |
 | `scrapely tags set` | Replace all tags for an account | yes |
 | `scrapely tags update` | Add or remove individual tags on an account |  |
@@ -275,6 +276,7 @@ Plus `scrapely login`, `scrapely logout`, `scrapely whoami`, `scrapely profiles`
 | `toggle_followups_pause` | Pause/unpause follow-up messages |
 | `update_handle` | Update an account's stored handle after renaming it on X |
 | `toggle_warmup` | Enable/disable warmup mode |
+| `reassign_pending_dms` | Move pending DMs to other accounts, split evenly (`dry_run` to preview) |
 | `get_account_tags` | Get tags for accounts |
 | `set_account_tags` | Replace all tags for an account |
 | `update_account_tags` | Add or remove individual tags |
