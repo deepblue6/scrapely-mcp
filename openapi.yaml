@@ -574,6 +574,44 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /scraping-sources/performance:
+    get:
+      tags: [Lead Scraping]
+      summary: Lead source performance
+      description: >-
+        Which lead sources, and which seed accounts within a source, produce
+        people who reply. DMs sent counts the source's leads that were
+        messaged; replies counts those who replied. Rates are percentages of
+        DMs sent. Someone in several of your sources counts in each. Pass
+        lead_source_id to split one source by seed (seed is null for leads
+        whose seed couldn't be found). Limited to 10 calls per minute.
+      operationId: getSourcePerformance
+      parameters:
+        - name: lead_source_id
+          in: query
+          description: Split this lead source by seed account
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Per-source report, or per-seed report for one source
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourcePerformance'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
   /scraping-sources/{lead_source_id}/leads:
     get:
       tags: [Lead Scraping]
@@ -796,6 +834,17 @@ paths:
           description: Filter by receiver handle
           schema:
             type: string
+        - name: campaign_name
+          in: query
+          description: Only leads who replied to a DM from this campaign
+          schema:
+            type: string
+        - name: lead_source_id
+          in: query
+          description: Only leads DMed from this lead source who replied
+          schema:
+            type: string
+            format: uuid
         - name: limit
           in: query
           description: Results per page
@@ -3215,6 +3264,102 @@ components:
         neutral:
           type: integer
 
+    ConversationOrigin:
+      type: object
+      description: Where the lead came from. campaign_name and variant are filled when the lead replied.
+      properties:
+        campaign_name:
+          type: string
+          nullable: true
+        variant:
+          type: string
+          nullable: true
+          description: The message they were sent
+        lead_sources:
+          type: array
+          description: Lead sources the person was in when they were DMed (often several)
+          items:
+            type: object
+            properties:
+              lead_source_id:
+                type: string
+                format: uuid
+              name:
+                type: string
+              seed:
+                type: string
+                nullable: true
+                description: The account (or tweet) they were scraped from
+              seed_type:
+                type: string
+                nullable: true
+                example: followers, following
+
+    PerformanceStats:
+      type: object
+      properties:
+        dms_sent:
+          type: integer
+        replies:
+          type: integer
+        positive_replies:
+          type: integer
+        reply_rate:
+          type: number
+          description: Replies as a % of DMs sent
+        positive_rate:
+          type: number
+          description: Positive replies as a % of DMs sent
+
+    SourcePerformance:
+      type: object
+      properties:
+        sources:
+          type: array
+          description: Without lead_source_id
+          items:
+            allOf:
+              - $ref: '#/components/schemas/PerformanceStats'
+              - type: object
+                properties:
+                  lead_source_id:
+                    type: string
+                    format: uuid
+                  name:
+                    type: string
+                  seeds:
+                    type: array
+                    items:
+                      type: string
+                  created_at:
+                    type: string
+                    format: date-time
+        source:
+          description: With lead_source_id
+          allOf:
+            - $ref: '#/components/schemas/PerformanceStats'
+            - type: object
+              properties:
+                lead_source_id:
+                  type: string
+                  format: uuid
+                name:
+                  type: string
+        seeds:
+          type: array
+          description: With lead_source_id
+          items:
+            allOf:
+              - $ref: '#/components/schemas/PerformanceStats'
+              - type: object
+                properties:
+                  seed:
+                    type: string
+                    nullable: true
+                  seed_type:
+                    type: string
+                    nullable: true
+
     ConversationList:
       type: object
       properties:
@@ -3246,6 +3391,8 @@ components:
           type: string
         receiver:
           $ref: '#/components/schemas/Receiver'
+        origin:
+          $ref: '#/components/schemas/ConversationOrigin'
         last_message:
           type: object
           properties:
@@ -3280,6 +3427,8 @@ components:
               type: string
             lead:
               $ref: '#/components/schemas/Lead'
+            origin:
+              $ref: '#/components/schemas/ConversationOrigin'
             crm:
               $ref: '#/components/schemas/CRMData'
             stats:
