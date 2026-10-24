@@ -2315,7 +2315,7 @@ components:
             format: uuid
         to_account_ids:
           type: array
-          description: Account UUIDs to give them to, split evenly (1-100). Include a source to let it keep its share.
+          description: Account UUIDs to give them to, split evenly (1-1000). Include a source to let it keep its share.
           items:
             type: string
             format: uuid
