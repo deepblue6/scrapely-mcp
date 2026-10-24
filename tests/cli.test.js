@@ -13,10 +13,6 @@ before(async () => {
     "POST /campaigns/pause": { success: true, message: "Campaign paused" },
     "POST /dm/send": { success: true },
     "POST /people/search": { count: 42 },
-    "GET /scraping-sources/performance": (req) => ({ status: 200, body: req.query.lead_source_id
-      ? { source: { lead_source_id: "src-1", name: "Warp team", dms_sent: 41, replies: 1 },
-          seeds: [{ seed: "ayushswrites", seed_type: "followers, following", dms_sent: 11, replies: 1, positive_replies: 1, reply_rate: 9.1, positive_rate: 9.1 }] }
-      : { sources: [{ lead_source_id: "src-1", name: "Warp team", dms_sent: 41, replies: 1, positive_replies: 1, reply_rate: 2.4, positive_rate: 2.4 }] } }),
     "GET /conversations": { conversations: [], pagination: { limit: 50, count: 0, has_more: false } },
     "POST /accounts/reassign-pending": (req) => ({ status: 200, body: {
       success: true, dry_run: !!req.body.dry_run, moved_count: 10, message: "Would move 10 pending DMs (nothing changed)",
@@ -180,24 +176,11 @@ test("accounts reassign-pending: --dry-run runs without --yes, a real move asks 
     { from_account_ids: ["acc-2"], to_account_ids: ["acc-1", "acc-2"] });
 });
 
-test("sources performance: per source, or per seed with --lead-source-id; runs without asking", async () => {
-  const all = await cli(["sources", "performance"]);
-  assert.equal(all.code, 0);
-  assert.match(all.stdout, /REPLY %/);
-  assert.match(all.stdout, /Warp team\s+src-1\s+41/);
-
-  const one = await cli(["sources", "performance", "--lead-source-id", "src-1"]);
-  assert.equal(one.code, 0);
-  assert.match(one.stdout, /ayushswrites\s+followers, following\s+11/);
-  assert.deepEqual(sentTo("GET", "/scraping-sources/performance").at(-1).query, { lead_source_id: "src-1" });
-});
-
-test("conversations list passes --campaign-name and --lead-source-id", async () => {
-  const { code } = await cli(["conversations", "list", "--campaign-name", "Oct launch", "--lead-source-id", "src-1"]);
+test("conversations list passes --campaign-name", async () => {
+  const { code } = await cli(["conversations", "list", "--campaign-name", "Oct launch"]);
   assert.equal(code, 0);
   const { query } = sentTo("GET", "/conversations").at(-1);
   assert.equal(query.campaign_name, "Oct launch");
-  assert.equal(query.lead_source_id, "src-1");
 });
 
 test("the confirmation shows the flags as typed", async () => {

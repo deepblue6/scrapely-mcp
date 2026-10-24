@@ -261,15 +261,6 @@ const scrapingTools = [
     cli: { group: "sources", action: "list", summary: "List your lead sources (IDs, status, lead counts)" },
   },
   {
-    name: "get_source_performance",
-    description: "Which lead sources, and which seed accounts within a source, produce people who reply: DMs sent, replies, positive replies and rates (% of DMs sent) for each. Pass lead_source_id to split one source by seed. Use it to choose seeds for new scrapes; fetch_conversations with lead_source_id shows the actual replies.",
-    inputs: {
-      lead_source_id: z.string().optional().describe("Split this lead source by seed account"),
-    },
-    run: ({ lead_source_id }, call) => call("GET", "/scraping-sources/performance", null, { lead_source_id }),
-    cli: { group: "sources", action: "performance", summary: "Reply rates by lead source, or by seed within one source" },
-  },
-  {
     name: "get_scraping_source_leads",
     description: "Get leads from a specific scraping source.",
     inputs: {
@@ -670,20 +661,19 @@ function campaignTools(hosted) {
 const conversationTools = [
   {
     name: "fetch_conversations",
-    description: "Fetch conversations with optional filters. Each conversation has an origin: the campaign and message variant the lead replied to, and the lead sources (with seed account) they came from.",
+    description: "Fetch conversations with optional filters. Each conversation has an origin: the campaign the lead replied to, the exact message they got (variant), and variant_template / variant_index to group replies by variant (variant_template matches the variants in get_campaign_analytics). Origin is null until the lead replies.",
     inputs: {
       conversation_id: z.string().optional().describe("Get a single conversation with all messages"),
       account_id: z.string().optional().describe("Filter by Twitter account"),
       handle: z.string().optional().describe("Filter by receiver handle"),
       campaign_name: z.string().optional().describe("Only leads who replied to a DM from this campaign"),
-      lead_source_id: z.string().optional().describe("Only leads DMed from this lead source who replied"),
       limit: z.number().optional().describe("Results per page (max 100)"),
       cursor: z.string().optional().describe("Pagination cursor"),
       offset: z.number().optional().describe("Pagination offset"),
       include_messages: z.boolean().optional().describe("Include full message history"),
     },
-    run: ({ conversation_id, account_id, handle, campaign_name, lead_source_id, limit, cursor, offset, include_messages }, call) =>
-      call("GET", "/conversations", null, { conversation_id, account_id, handle, campaign_name, lead_source_id, limit, cursor, offset, include_messages }),
+    run: ({ conversation_id, account_id, handle, campaign_name, limit, cursor, offset, include_messages }, call) =>
+      call("GET", "/conversations", null, { conversation_id, account_id, handle, campaign_name, limit, cursor, offset, include_messages }),
     cli: {
       group: "conversations",
       action: "list",

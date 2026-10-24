@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { tools } from "../tools.js";
 import { GROUPS } from "../cli/registry.js";
 
-test("there are 57 tools", () => {
-  assert.equal(tools.length, 57);
+test("there are 56 tools", () => {
+  assert.equal(tools.length, 56);
 });
 
 test("every tool has a unique `scrapely <group> <action>` command", () => {

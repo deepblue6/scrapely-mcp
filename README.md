@@ -218,7 +218,6 @@ Once a day the CLI checks npm for a newer version and, if there is one, prints a
 | `scrapely tags update` | Add or remove individual tags on an account |  |
 | `scrapely sources create` | Create a new lead source by scraping followers/following from Twitter/X accounts | yes |
 | `scrapely sources list` | List your lead sources (IDs, status, lead counts) |  |
-| `scrapely sources performance` | Reply rates by lead source, or by seed within one source (`--lead-source-id`) |  |
 | `scrapely sources leads` | Get leads from a specific scraping source |  |
 | `scrapely sources import` | Import your own list of leads (e.g. from a CSV) into a new lead source, ready to use in campaigns |  |
 | `scrapely campaigns launch` | Launch a DM campaign targeting leads from scraping sources | yes |
@@ -234,7 +233,7 @@ Once a day the CLI checks npm for a newer version and, if there is one, prints a
 | `scrapely campaigns get` | Get detailed analytics for a single campaign — totals, per-account breakdown, replies, settings (message variants, followups, engagement, send window), and pause state |  |
 | `scrapely campaigns analytics` | Get detailed campaign analytics with optional date range filtering |  |
 | `scrapely media upload` | Upload an image to attach to campaign DMs or follow-ups |  |
-| `scrapely conversations list` | Fetch conversations, with the campaign, lead source and seed each lead came from (filter with `--campaign-name`, `--lead-source-id`) |  |
+| `scrapely conversations list` | Fetch conversations, with the campaign and variant each lead replied to (filter with `--campaign-name`) |  |
 | `scrapely dm send` | Send a direct message to an existing conversation | yes |
 | `scrapely crm get` | Get conversations organized by CRM tags |  |
 | `scrapely crm update` | Update CRM data for a conversation |  |
@@ -283,7 +282,6 @@ Plus `scrapely login`, `scrapely logout`, `scrapely whoami`, `scrapely profiles`
 | `update_account_tags` | Add or remove individual tags |
 | `create_scraping_source` | Scrape followers/following with keyword and count filters |
 | `check_scraping_status` | Check progress of scraping jobs |
-| `get_source_performance` | Reply rates by lead source, or by seed within one source |
 | `get_scraping_source_leads` | Get leads from a scraping source |
 | `import_leads` | Import your own list of leads (handles or x.com URLs) into a new lead source |
 | `launch_campaign` | Launch a DM campaign with A/B testing, auto-follow/like/comment |
@@ -298,7 +296,7 @@ Plus `scrapely login`, `scrapely logout`, `scrapely whoami`, `scrapely profiles`
 | `edit_campaign` | Edit a campaign's messages, follow-ups, engagement actions and send window |
 | `upload_media` | Upload an image (link, base64, or local file with `npx`) to attach to campaign DMs and follow-ups |
 | `get_campaign_analytics` | Detailed analytics: reply rates, sentiment, variant stats. Supports date range filtering. |
-| `fetch_conversations` | Fetch conversations with optional message history, each with its campaign, lead source and seed; filter by campaign or lead source |
+| `fetch_conversations` | Fetch conversations with optional message history, each with the campaign and variant the lead replied to; filter by campaign |
 | `send_dm` | Send a DM to an existing conversation |
 | `get_crm_data` | Get conversations organized by CRM tags |
 | `update_crm` | Update notes, deal value, and tags |
