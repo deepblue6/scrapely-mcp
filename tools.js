@@ -33,6 +33,7 @@ import { z } from "zod";
 // Statuses get_campaign_leads documents (the API filters by any string and returns nothing for others).
 const LEAD_STATUSES = ["pending", "completed", "dms_closed", "already_contacted", "blocklisted", "needs_verified_sender", "failed"];
 
+const LEAD_MEDIA_URL_HINT = "This lead's own image on the first DM, e.g. a meme with their name: a media_url from upload_media or any public image link. Sent instead of the variant's image; leave it out to use the variant's.";
 const MEDIA_URL_HINT = "Image to attach: a media_url from upload_media (recommended), or any public image link. Outside links are downloaded when each DM sends; if one stops working, that DM goes out without the image.";
 
 // ─── ACCOUNTS ────────────────────────────────────────────────────────────────
@@ -419,6 +420,7 @@ function campaignTools(hosted) {
           twitter_handle: z.string().describe("Twitter handle, @handle, or x.com profile URL"),
           custom_fields: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional().describe("{ columnName: value } used by {{columnName}} in templates"),
           comment: z.string().optional().describe("Comment for this lead (overrides comment_template)"),
+          media_url: z.string().optional().describe(LEAD_MEDIA_URL_HINT),
         })).min(1).describe("Leads to message"),
         followups: z.array(z.object({ wait_time: z.number(), wait_unit: z.enum(["seconds", "minutes", "hours", "days", "weeks"]), message: z.string(), media_url: z.string().optional().describe(MEDIA_URL_HINT) })).max(25).optional().describe("Up to 25 follow-up templates (same {{variables}} allowed)"),
         account_ids: z.array(z.string()).optional().describe("Account IDs to send from (defaults to all active)"),
@@ -525,6 +527,7 @@ function campaignTools(hosted) {
           twitter_handle: z.string().describe("Handle: 'name' or '@name'"),
           custom_fields: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional().describe("Values for the campaign's {{columns}}, e.g. { first_name: 'Jane', company: 'Acme' }"),
           comment: z.string().optional().describe("This lead's comment, for import campaigns that comment per lead"),
+          media_url: z.string().optional().describe(LEAD_MEDIA_URL_HINT),
         })).optional().describe("Leads with their own custom_fields (use instead of twitter_handles for import campaigns)"),
       },
       run: async ({ campaign_name, twitter_handles, leads }, call) => {

@@ -2826,6 +2826,9 @@ components:
               comment:
                 type: string
                 description: Comment for this lead (overrides comment_template)
+              media_url:
+                type: string
+                description: "This lead's own image on the first DM (http(s) link), e.g. a meme with their name. Sent instead of the variant's image"
         followups:
           type: array
           items:

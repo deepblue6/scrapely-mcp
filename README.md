@@ -285,12 +285,12 @@ Plus `scrapely login`, `scrapely logout`, `scrapely whoami`, `scrapely profiles`
 | `get_scraping_source_leads` | Get leads from a scraping source |
 | `import_leads` | Import your own list of leads (handles or x.com URLs) into a new lead source |
 | `launch_campaign` | Launch a DM campaign with A/B testing, auto-follow/like/comment |
-| `launch_import_campaign` | Launch a campaign from your own lead list with custom {{variables}}, send window and days |
+| `launch_import_campaign` | Launch a campaign from your own lead list with custom {{variables}}, a per-lead image (e.g. a meme with their name), send window and days |
 | `pause_campaign` | Pause or unpause a campaign |
 | `list_campaigns` | List campaigns with stats |
 | `get_campaign_detail` | Get detailed campaign info and settings |
 | `get_campaign_leads` | List a campaign's leads with status, reply info and custom_fields |
-| `add_leads_to_campaign` | Add leads to a campaign by handle, or with custom_fields for import campaigns (any number; chunked automatically) |
+| `add_leads_to_campaign` | Add leads to a campaign by handle, or with custom_fields and a per-lead image for import campaigns (any number; chunked automatically) |
 | `add_lead_source_to_campaign` | Add every lead from a lead source to a campaign |
 | `rename_campaign` | Rename a campaign (DMs, stats and pause state carry over) |
 | `edit_campaign` | Edit a campaign's messages, follow-ups, engagement actions and send window |
