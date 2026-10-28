@@ -263,14 +263,14 @@ const scrapingTools = [
   },
   {
     name: "get_scraping_source_leads",
-    description: "Get leads from a specific scraping source.",
+    description: "Get leads from a specific scraping source. Paginated with a cursor: pass pagination.next_cursor from the previous page as cursor until has_more is false.",
     inputs: {
       source_id: z.string().describe("The scraping source ID"),
-      limit: z.number().optional().describe("Results per page (max 100)"),
-      offset: z.number().optional().describe("Pagination offset"),
+      limit: z.number().optional().describe("Results per page (default 100, max 1000)"),
+      cursor: z.string().optional().describe("pagination.next_cursor from the previous page; leave out for the first page"),
     },
-    run: ({ source_id, limit, offset }, call) =>
-      call("GET", `/scraping-sources/${encodeURIComponent(source_id)}/leads`, null, { limit, offset }),
+    run: ({ source_id, limit, cursor }, call) =>
+      call("GET", `/scraping-sources/${encodeURIComponent(source_id)}/leads`, null, { limit, cursor }),
     cli: { group: "sources", action: "leads" },
   },
   {
@@ -499,7 +499,7 @@ function campaignTools(hosted) {
     },
     {
       name: "get_campaign_leads",
-      description: "List the leads in a campaign with their status, sending account, reply info and custom_fields (the columns from an import campaign, e.g. a personalized link). Paginated, oldest first.",
+      description: "List the leads in a campaign with their status, sending account, reply info, custom_fields (the columns from an import campaign, e.g. a personalized link) and media_url (the lead's own first-DM image, if any). Paginated, oldest first.",
       inputs: {
         campaign_name: z.string().describe("Campaign name"),
         status: z.string().optional().describe("Only leads with this status: pending, completed, dms_closed, already_contacted, blocklisted, needs_verified_sender (recipient only accepts DMs from verified accounts), failed"),

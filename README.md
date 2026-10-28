@@ -289,7 +289,7 @@ Plus `scrapely login`, `scrapely logout`, `scrapely whoami`, `scrapely profiles`
 | `pause_campaign` | Pause or unpause a campaign |
 | `list_campaigns` | List campaigns with stats |
 | `get_campaign_detail` | Get detailed campaign info and settings |
-| `get_campaign_leads` | List a campaign's leads with status, reply info and custom_fields |
+| `get_campaign_leads` | List a campaign's leads with status, reply info, custom_fields and each lead's own image |
 | `add_leads_to_campaign` | Add leads to a campaign by handle, or with custom_fields and a per-lead image for import campaigns (any number; chunked automatically) |
 | `add_lead_source_to_campaign` | Add every lead from a lead source to a campaign |
 | `rename_campaign` | Rename a campaign (DMs, stats and pause state carry over) |

@@ -365,3 +365,8 @@ test("NO_COLOR and pipes never get ANSI codes", async () => {
   const { stdout, stderr } = await cli(["tweets", "list", "--status", "nope"], { env: { NO_COLOR: "1" } });
   assert.doesNotMatch(stdout + stderr, ANSI);
 });
+
+test("sources leads pages with --cursor (the API ignores offset)", async () => {
+  await cli(["sources", "leads", "--source-id", "src1", "--limit", "100", "--cursor", "abc"]);
+  assert.deepEqual(sentTo("GET", "/scraping-sources/src1/leads").at(-1).query, { limit: "100", cursor: "abc" });
+});
