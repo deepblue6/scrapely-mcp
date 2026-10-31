@@ -597,7 +597,7 @@ function campaignTools(hosted) {
     },
     {
       name: "edit_campaign",
-      description: "Edit settings for an existing campaign — message variants, followups, engagement actions, send window/days.",
+      description: "Edit settings for an existing campaign — message variants, followups, engagement actions, send window/days. message_variants and followups replace the whole sequence: to change some messages, start from get_campaign_detail and send every variant and follow-up back, keeping each media_url, or its image is removed.",
       inputs: {
         campaign_name: z.string().describe("Campaign name"),
         message_variants: z.array(z.object({
@@ -636,7 +636,7 @@ function campaignTools(hosted) {
     },
     {
       name: "get_campaign_detail",
-      description: "Get detailed analytics for a single campaign — totals, per-account breakdown, replies, settings (message variants, followups, engagement, send window), and pause state.",
+      description: "Get detailed analytics for a single campaign — totals, per-account breakdown, replies, settings (message variants and followups with their media_url images, engagement, send window), and pause state.",
       inputs: {
         campaign_name: z.string().describe("The campaign name (unique per workspace). Use list_campaigns to find names."),
       },
