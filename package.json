@@ -1,12 +1,12 @@
 {
   "name": "scrapely-mcp",
   "version": "1.19.2",
-  "description": "MCP server and command-line tool (scrapely) for the Scrapely Twitter/X DM Automation API \u2014 manage campaigns, scrape leads, send DMs, and more through Claude, any MCP client, or your terminal.",
+  "description": "MCP server and command-line tool (scrapely) for the Scrapely Twitter/X DM Automation API — manage campaigns, scrape leads, send DMs, and more through Claude, any MCP client, or your terminal.",
   "type": "module",
   "main": "server.js",
   "bin": {
-    "scrapely-mcp": "./server.js",
-    "scrapely": "./cli.js"
+    "scrapely-mcp": "server.js",
+    "scrapely": "cli.js"
   },
   "files": [
     "server.js",
@@ -37,7 +37,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/deepblue6/scrapely-mcp.git"
+    "url": "git+https://github.com/deepblue6/scrapely-mcp.git"
   },
   "homepage": "https://github.com/deepblue6/scrapely-mcp#readme",
   "bugs": {
