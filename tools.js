@@ -799,6 +799,8 @@ const listenerTools = [
       listen_replies: z.boolean().optional().describe("Send an event for each person who replies to its recent posts (default false)"),
       listen_reposts: z.boolean().optional().describe("Send an event for each person who reposts its recent posts (default false)"),
       webhook_urls: z.array(z.string()).optional().describe("Send this listener's events only to these of your webhook URLs (see list_listeners' webhooks). Leave out for all your webhooks."),
+      track_new_posts: z.boolean().optional().describe("Track replies / reposts on every new post (default true). false = only posts switched on in post_tracking"),
+      post_tracking: z.record(z.string(), z.boolean()).optional().describe('Per-post on/off for replies / reposts, e.g. {"https://x.com/name/status/123": true}. A post switched on is tracked even after 3 days'),
     },
     run: ({ handle, ...rest }, call) => {
       const body = { handle };
@@ -809,7 +811,7 @@ const listenerTools = [
   },
   {
     name: "update_listener",
-    description: "Change what a listener watches (followers, following, posts, replies, reposts), which webhooks it sends to, or pause/resume it. Get the listener id from list_listeners. Only the fields you pass are changed.",
+    description: "Change what a listener watches (followers, following, posts, replies, reposts), which posts it tracks replies / reposts on (track_new_posts, post_tracking), which webhooks it sends to, or pause/resume it. Get the listener id from list_listeners. Only the fields you pass are changed.",
     inputs: {
       id: z.string().describe("Listener id from list_listeners"),
       listen_followers: z.boolean().optional().describe("Watch for new followers"),
@@ -818,6 +820,8 @@ const listenerTools = [
       listen_replies: z.boolean().optional().describe("Watch for people replying to its recent posts"),
       listen_reposts: z.boolean().optional().describe("Watch for people reposting its recent posts"),
       webhook_urls: z.array(z.string()).nullable().optional().describe("Send only to these of your webhook URLs; null or [] = all your webhooks"),
+      track_new_posts: z.boolean().optional().describe("Track replies / reposts on every new post; false = only posts switched on in post_tracking"),
+      post_tracking: z.record(z.string(), z.boolean().nullable()).optional().describe('Switch replies / reposts tracking on or off per post, merged into the current settings: {"<post id or URL>": true | false | null}. null puts a post back on the track_new_posts default. See list_listener_posts'),
       is_active: z.boolean().optional().describe("false to pause the listener, true to resume it"),
     },
     run: ({ id, ...rest }, call) => {
@@ -847,6 +851,15 @@ const listenerTools = [
     },
     run: (params, call) => call("GET", "/follower-listeners/events", null, params),
     cli: { group: "listeners", action: "events" },
+  },
+  {
+    name: "list_listener_posts",
+    description: "List a listener's posts and whether replies / reposts are tracked on each (tracked, and override when set by hand): its posts from the last 3 days plus any post switched on. Switch posts on or off with update_listener's post_tracking; switching one on starts from its current replies and reposts, so only new engagers are sent.",
+    inputs: {
+      id: z.string().describe("Listener id from list_listeners"),
+    },
+    run: ({ id }, call) => call("GET", "/follower-listeners/posts", null, { id }),
+    cli: { group: "listeners", action: "posts" },
   },
   {
     name: "remove_listener",
