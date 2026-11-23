@@ -893,7 +893,7 @@ const generatedKeyNotice = (data) => (data && typeof data.key === "string" ? GEN
 const listTools = [
   {
     name: "start_list_scrape",
-    description: "Scrape every follower (or account followed) of an X handle, with profiles, in the background. Paid from the data balance at twitterapi.io prices: $0.00001 per user on a full page of 200 (about $0.10 per 10,000 users), $0.00002 on 100-199, $0.00003 on 1-99, at least $0.00015 per page; errors and empty pages are free. Returns the list id: check it with get_list_scrape and read users with get_list_users.",
+    description: "Scrape every follower (or account followed) of an X handle, with profiles, in the background. Paid from the data balance: $0.00001 per user, followers or following alike (about $0.10 per 10,000 users); errors and empty pages are free. Returns the list id: check it with get_list_scrape and read users with get_list_users.",
     inputs: {
       handle: z.string().describe("X handle whose followers / following to scrape"),
       type: z.enum(["followers", "following"]).optional().describe("followers (default) or following"),
