@@ -783,41 +783,46 @@ const conversationTools = [
 const listenerTools = [
   {
     name: "list_listeners",
-    description: "List follower listeners: X accounts being watched for new followers and/or new following. Each new one is sent to your webhook as a new_follower or new_following event. Shows each listener's id, handle, what it listens to, whether it's active, last check times and last error.",
+    description: "List listeners: X accounts being watched for new followers, new following, new posts, and people replying to or reposting their recent posts. Each one is sent to your webhooks as a new_follower, new_following, new_post, new_replier or new_reposter event. Shows each listener's id, handle, what it listens to, which webhooks it sends to (webhook_urls, null = all), whether it's active, last check times and last error, plus your webhook URLs (webhooks).",
     inputs: {},
     run: (args, call) => call("GET", "/follower-listeners"),
     cli: { group: "listeners", action: "list" },
   },
   {
     name: "add_listener",
-    description: "Start watching an X account for new followers and/or new following (same as adding a listener in the dashboard). Max 25 listeners per workspace, one per handle. New followers/following are sent to your webhook URL (set in Settings) as new_follower / new_following events.",
+    description: "Start watching an X account (same as adding a listener in the dashboard). Max 25 listeners per workspace, one per handle. Events go to your webhooks (set in Settings), or only the ones in webhook_urls: new_follower, new_following, new_post (it posted), new_replier / new_reposter (someone replied to or reposted one of its posts from the last 3 days; checked every minute).",
     inputs: {
       handle: z.string().describe("X handle to watch: 'name', '@name', or an x.com profile URL"),
       listen_followers: z.boolean().optional().describe("Send an event when this account gains a new follower (default true)"),
       listen_following: z.boolean().optional().describe("Send an event when this account follows someone new (default true)"),
+      listen_posts: z.boolean().optional().describe("Send an event when this account publishes a post (default false)"),
+      listen_replies: z.boolean().optional().describe("Send an event for each person who replies to its recent posts (default false)"),
+      listen_reposts: z.boolean().optional().describe("Send an event for each person who reposts its recent posts (default false)"),
+      webhook_urls: z.array(z.string()).optional().describe("Send this listener's events only to these of your webhook URLs (see list_listeners' webhooks). Leave out for all your webhooks."),
     },
-    run: ({ handle, listen_followers, listen_following }, call) => {
+    run: ({ handle, ...rest }, call) => {
       const body = { handle };
-      if (listen_followers !== undefined) body.listen_followers = listen_followers;
-      if (listen_following !== undefined) body.listen_following = listen_following;
+      for (const [k, v] of Object.entries(rest)) if (v !== undefined) body[k] = v;
       return call("POST", "/follower-listeners", body);
     },
     cli: { group: "listeners", action: "add" },
   },
   {
     name: "update_listener",
-    description: "Change what a listener watches (followers, following or both), or pause/resume it. Get the listener id from list_listeners. Only the fields you pass are changed.",
+    description: "Change what a listener watches (followers, following, posts, replies, reposts), which webhooks it sends to, or pause/resume it. Get the listener id from list_listeners. Only the fields you pass are changed.",
     inputs: {
       id: z.string().describe("Listener id from list_listeners"),
       listen_followers: z.boolean().optional().describe("Watch for new followers"),
       listen_following: z.boolean().optional().describe("Watch for new following"),
+      listen_posts: z.boolean().optional().describe("Watch for new posts"),
+      listen_replies: z.boolean().optional().describe("Watch for people replying to its recent posts"),
+      listen_reposts: z.boolean().optional().describe("Watch for people reposting its recent posts"),
+      webhook_urls: z.array(z.string()).nullable().optional().describe("Send only to these of your webhook URLs; null or [] = all your webhooks"),
       is_active: z.boolean().optional().describe("false to pause the listener, true to resume it"),
     },
-    run: ({ id, listen_followers, listen_following, is_active }, call) => {
+    run: ({ id, ...rest }, call) => {
       const body = { id };
-      if (listen_followers !== undefined) body.listen_followers = listen_followers;
-      if (listen_following !== undefined) body.listen_following = listen_following;
-      if (is_active !== undefined) body.is_active = is_active;
+      for (const [k, v] of Object.entries(rest)) if (v !== undefined) body[k] = v;
       return call("PATCH", "/follower-listeners", body);
     },
     cli: { group: "listeners", action: "update" },
@@ -825,11 +830,11 @@ const listenerTools = [
   },
   {
     name: "get_listener_events",
-    description: "Query the new followers / new following your follower listeners have detected, newest first — including any you missed in your webhook. Each event has the watched handle, when it was detected, and the person's full profile (handle, name, bio, location, website, follower/following counts, verified). All filters are optional.",
+    description: "Query the events your listeners have detected (new followers, following, posts, repliers, reposters), newest first — including any you missed in your webhook. Each event has the watched handle, when it was detected, the person's full profile (handle, name, bio, location, website, follower/following counts, verified), and for post events the post (and the reply). All filters are optional.",
     inputs: {
       listener_id: z.string().optional().describe("Only events from this listener (id from list_listeners)"),
       target_handle: z.string().optional().describe("Only events for this watched account"),
-      type: z.enum(["followers", "following"]).optional().describe("followers = new_follower events, following = new_following events"),
+      type: z.enum(["followers", "following", "posts", "replies", "reposts"]).optional().describe("followers = new_follower, following = new_following, posts = new_post, replies = new_replier, reposts = new_reposter events"),
       since: z.string().optional().describe("Only events detected on/after this ISO date or datetime, e.g. 2026-10-12"),
       until: z.string().optional().describe("Only events detected on/before this ISO date or datetime"),
       handle: z.string().optional().describe("The person's X handle (exact match, case-insensitive)"),
@@ -983,7 +988,7 @@ const dataTools = [
     // Static docs: no API call.
     run: async () => ({
       description: "Webhooks send real-time POST requests when events occur.",
-      events: { new_reply: "First reply from prospect.", reply_back_and_forth: "Follow-up reply.", account_paused: "Account disconnected.", new_follower: "A watched account (see list_listeners) gained a new follower.", new_following: "A watched account followed someone new." },
+      events: { new_reply: "First reply from prospect.", reply_back_and_forth: "Follow-up reply.", account_paused: "Account disconnected.", new_follower: "A watched account (see list_listeners) gained a new follower.", new_following: "A watched account followed someone new.", new_post: "A watched account published a post.", new_replier: "Someone replied to a watched account's recent post.", new_reposter: "Someone reposted a watched account's recent post." },
       configuration: "Configure webhook URLs in Settings.",
     }),
     cli: { group: "webhooks", action: "info" },
