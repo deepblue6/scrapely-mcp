@@ -217,6 +217,8 @@ Once a day the CLI checks npm for a newer version and, if there is one, prints a
 | `scrapely tags set` | Replace all tags for an account | yes |
 | `scrapely tags update` | Add or remove individual tags on an account |  |
 | `scrapely sources create` | Create a new lead source by scraping followers/following from Twitter/X accounts | yes |
+| `scrapely sources create-commenters` | Create a new lead source from the people who replied to X posts | yes |
+| `scrapely sources create-retweeters` | Create a new lead source from the people who reposted X posts | yes |
 | `scrapely sources list` | List your lead sources (IDs, status, lead counts) |  |
 | `scrapely sources leads` | Get leads from a specific scraping source |  |
 | `scrapely sources import` | Import your own list of leads (e.g. from a CSV) into a new lead source, ready to use in campaigns |  |
@@ -281,6 +283,8 @@ Plus `scrapely login`, `scrapely logout`, `scrapely whoami`, `scrapely profiles`
 | `set_account_tags` | Replace all tags for an account |
 | `update_account_tags` | Add or remove individual tags |
 | `create_scraping_source` | Scrape followers/following with keyword and count filters |
+| `create_commenter_source` | Scrape the people who replied to posts |
+| `create_retweeter_source` | Scrape the people who reposted posts |
 | `check_scraping_status` | Check progress of scraping jobs |
 | `get_scraping_source_leads` | Get leads from a scraping source |
 | `import_leads` | Import your own list of leads (handles or x.com URLs) into a new lead source |

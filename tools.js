@@ -215,6 +215,23 @@ const accountTools = [
 
 // ─── LEAD SCRAPING ───────────────────────────────────────────────────────────
 
+// Filters shared by every scrape (followers, commenters, reposters).
+const SCRAPE_FILTERS = z.object({
+  includeKeywords: z.array(z.array(z.string())).optional(),
+  excludeKeywords: z.array(z.array(z.string())).optional(),
+  includeWithinLogic: z.enum(["AND", "OR"]).optional(),
+  includeBetweenLogic: z.enum(["AND", "OR"]).optional(),
+  excludeWithinLogic: z.enum(["AND", "OR"]).optional(),
+  excludeBetweenLogic: z.enum(["AND", "OR"]).optional(),
+  locationExcludeKeywords: z.array(z.string()).optional(),
+  followers: z.object({ min: z.number().optional(), max: z.number().optional() }).optional(),
+  following: z.object({ min: z.number().optional(), max: z.number().optional() }).optional(),
+  hasWebsite: z.boolean().nullable().optional(),
+  isBlueVerified: z.boolean().nullable().optional().describe("true = only Blue Verified, false = only non-verified, null = no filter"),
+  dmsOpen: z.boolean().nullable().optional().describe("true = only DMs open, false = only DMs closed, null = no filter"),
+  lastActiveHours: z.number().nullable().optional().describe("Only keep leads active within this many hours (e.g. 24)"),
+});
+
 const scrapingTools = [
   {
     name: "create_scraping_source",
@@ -226,21 +243,7 @@ const scrapingTools = [
         followers: z.boolean().optional().describe("Scrape their followers"),
         following: z.boolean().optional().describe("Scrape who they follow"),
       })).describe("Array of accounts to scrape from"),
-      filters: z.object({
-        includeKeywords: z.array(z.array(z.string())).optional(),
-        excludeKeywords: z.array(z.array(z.string())).optional(),
-        includeWithinLogic: z.enum(["AND", "OR"]).optional(),
-        includeBetweenLogic: z.enum(["AND", "OR"]).optional(),
-        excludeWithinLogic: z.enum(["AND", "OR"]).optional(),
-        excludeBetweenLogic: z.enum(["AND", "OR"]).optional(),
-        locationExcludeKeywords: z.array(z.string()).optional(),
-        followers: z.object({ min: z.number().optional(), max: z.number().optional() }).optional(),
-        following: z.object({ min: z.number().optional(), max: z.number().optional() }).optional(),
-        hasWebsite: z.boolean().nullable().optional(),
-        isBlueVerified: z.boolean().nullable().optional().describe("true = only Blue Verified, false = only non-verified, null = no filter"),
-        dmsOpen: z.boolean().nullable().optional().describe("true = only DMs open, false = only DMs closed, null = no filter"),
-        lastActiveHours: z.number().nullable().optional().describe("Only keep leads active within this many hours (e.g. 24)"),
-      }).optional().describe("Filter configuration"),
+      filters: SCRAPE_FILTERS.optional().describe("Filter configuration"),
     },
     run: ({ name, sources, filters }, call) => {
       const body = { name, sources };
@@ -248,6 +251,44 @@ const scrapingTools = [
       return call("POST", "/scraping-sources", body);
     },
     cli: { group: "sources", action: "create" },
+    destructive: true,
+  },
+  {
+    name: "create_commenter_source",
+    description: "Create a new lead source from the people who replied to X posts. Same filters as create_scraping_source. Uses 1 credit per lead kept.",
+    inputs: {
+      name: z.string().describe("Name for the lead source"),
+      tweets: z.array(z.object({
+        url: z.string().describe("Full post URL, e.g. https://x.com/user/status/123"),
+        max_leads: z.number().describe("Most repliers to scrape from this post"),
+      })).describe("Posts to scrape"),
+      filters: SCRAPE_FILTERS.optional().describe("Filter configuration (same as create_scraping_source)"),
+    },
+    run: ({ name, tweets, filters }, call) => {
+      const body = { name, tweets };
+      if (filters) body.filters = filters;
+      return call("POST", "/scraping-sources/commenters", body);
+    },
+    cli: { group: "sources", action: "create-commenters", example: '--name "Launch post" --tweets @tweets.json' },
+    destructive: true,
+  },
+  {
+    name: "create_retweeter_source",
+    description: "Create a new lead source from the people who reposted X posts. Same filters as create_scraping_source. Uses 1 credit per lead kept. Likers can't be scraped: X only shows them to the post's author.",
+    inputs: {
+      name: z.string().describe("Name for the lead source"),
+      tweets: z.array(z.object({
+        url: z.string().describe("Full post URL, e.g. https://x.com/user/status/123"),
+        max_leads: z.number().describe("Most reposters to scrape from this post"),
+      })).describe("Posts to scrape"),
+      filters: SCRAPE_FILTERS.optional().describe("Filter configuration (same as create_scraping_source)"),
+    },
+    run: ({ name, tweets, filters }, call) => {
+      const body = { name, tweets };
+      if (filters) body.filters = filters;
+      return call("POST", "/scraping-sources/retweeters", body);
+    },
+    cli: { group: "sources", action: "create-retweeters", example: '--name "Launch post" --tweets @tweets.json' },
     destructive: true,
   },
   {
