@@ -19,7 +19,7 @@ export const GROUPS = {
   listeners: "Watch X accounts for new followers, following, posts, repliers and reposters",
   wallet: "Data balance that pays for listener events: top up, auto-recharge, usage",
   people: "Search the Scrapely People database",
-  enrich: "Find a person's X profile or email",
+  enrich: "Find a person's X profile, email or company website",
   tweets: "Schedule tweets",
   webhooks: "Webhook URLs, keys, settings and event reference",
   feedback: "Report a bug or idea to the Scrapely team",

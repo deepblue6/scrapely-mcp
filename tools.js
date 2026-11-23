@@ -1084,6 +1084,16 @@ const dataTools = [
     destructive: true,
   },
   {
+    name: "find_website",
+    description: "Find the company website behind X handles, plus each person's first and last name (ready for an email lookup). Reads the bio, follows company accounts it mentions, and checks the domain loads. Costs $0.01 per domain found from the data balance (see get_data_wallet); no domain found or an error is free. Up to 10 handles per call.",
+    inputs: {
+      handles: z.array(z.string()).describe("X handles, e.g. [\"paulg\", \"@levelsio\"] (up to 10)"),
+    },
+    run: ({ handles }, call) => call("POST", "/enrich/website", { handles }),
+    cli: { group: "enrich", action: "website", example: "--handles paulg,levelsio" },
+    destructive: true,
+  },
+  {
     name: "enrich_profile",
     description: "Get a public Twitter/X profile from a handle. Returns name, bio, links (real destinations, not t.co), follower and following counts, profile picture, verified status and location. Free, no credits used.",
     inputs: {
