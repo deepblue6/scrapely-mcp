@@ -255,6 +255,11 @@ Once a day the CLI checks npm for a newer version and, if there is one, prints a
 | `scrapely wallet topup` | Stripe link to add money to the data balance (minimum $5) |  |
 | `scrapely wallet auto-recharge` | Turn auto-recharge on/off or change it | yes |
 | `scrapely wallet usage` | Charges and top-ups, newest first |  |
+| `scrapely lists start` | Scrape a handle's followers or following ($0.00001 per user) | yes |
+| `scrapely lists list` | Your list scrapes and their status |  |
+| `scrapely lists get` | One list's status, users so far and cost |  |
+| `scrapely lists users` | Read a list's users, paged |  |
+| `scrapely lists resume` | Carry on a list stopped by an empty balance | yes |
 | `scrapely enrich credits` | Check your enrichment credit balance |  |
 | `scrapely tweets schedule` | Schedule a tweet to be posted at a specific time | yes |
 | `scrapely tweets list` | List scheduled tweets with optional filters |  |
@@ -317,6 +322,11 @@ Plus `scrapely login`, `scrapely logout`, `scrapely whoami`, `scrapely profiles`
 | `top_up_data_wallet` | Checkout link to add balance (min $5) |
 | `update_auto_recharge` | Auto-recharge on/off, threshold, amount |
 | `get_data_usage` | Charges and top-ups |
+| `start_list_scrape` | Followers / following of a handle, $0.00001 per user |
+| `list_list_scrapes` | List scrapes and status |
+| `get_list_scrape` | One list's status |
+| `get_list_users` | A list's users, paged |
+| `resume_list_scrape` | Resume a list stopped by an empty balance |
 | `get_enrichment_credits` | Check enrichment credit balance |
 | `search_people` | Search the People database of X profiles by bio, location, follower counts and more |
 | `get_people_credits` | Check your People search credit balance |

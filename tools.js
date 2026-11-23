@@ -888,6 +888,67 @@ const webhookKey = (text) =>
 // Shown after a command whose response carries a newly generated key.
 const generatedKeyNotice = (data) => (data && typeof data.key === "string" ? GENERATED_KEY_NOTE : null);
 
+// ─── FOLLOWER / FOLLOWING LISTS ──────────────────────────────────────────────
+
+const listTools = [
+  {
+    name: "start_list_scrape",
+    description: "Scrape every follower (or account followed) of an X handle, with profiles, in the background. Paid from the data balance at twitterapi.io prices: $0.00001 per user on a full page of 200 (about $0.10 per 10,000 users), $0.00002 on 100-199, $0.00003 on 1-99, at least $0.00015 per page; errors and empty pages are free. Returns the list id: check it with get_list_scrape and read users with get_list_users.",
+    inputs: {
+      handle: z.string().describe("X handle whose followers / following to scrape"),
+      type: z.enum(["followers", "following"]).optional().describe("followers (default) or following"),
+      max_users: z.number().optional().describe("Stop after this many users (default: the whole list)"),
+    },
+    run: (args, call) => {
+      const body = {};
+      for (const [k, v] of Object.entries(args)) if (v !== undefined) body[k] = v;
+      return call("POST", "/lists", body);
+    },
+    cli: { group: "lists", action: "start", example: "--handle naval --type followers --max-users 5000" },
+    destructive: true,
+  },
+  {
+    name: "list_list_scrapes",
+    description: "Your follower / following list scrapes, newest first, with status (pending, running, completed, stopped when the balance ran out, failed), users so far and amount charged.",
+    inputs: {
+      status: z.enum(["pending", "running", "completed", "stopped", "failed"]).optional().describe("Only lists with this status"),
+      limit: z.number().optional().describe("Max lists (default 50, max 200)"),
+    },
+    run: (params, call) => call("GET", "/lists", null, params),
+    cli: { group: "lists", action: "list" },
+  },
+  {
+    name: "get_list_scrape",
+    description: "Status of one list scrape: status, users_count, pages, charged_usd, and error when it failed (e.g. handle_not_found, account_protected).",
+    inputs: {
+      id: z.string().describe("List id from start_list_scrape or list_list_scrapes"),
+    },
+    run: ({ id }, call) => call("GET", `/lists/${encodeURIComponent(id)}`),
+    cli: { group: "lists", action: "get" },
+  },
+  {
+    name: "get_list_users",
+    description: "Users a list scrape has collected, in order (up to 1000 per call), with profile fields. Page with after_id = next_after_id until it is null; while the list is still running, call again later with after_id = last_id for the new users.",
+    inputs: {
+      id: z.string().describe("List id"),
+      after_id: z.number().optional().describe("next_after_id (or last_id) from the previous call"),
+      limit: z.number().optional().describe("Users per call (default 500, max 1000)"),
+    },
+    run: ({ id, ...params }, call) => call("GET", `/lists/${encodeURIComponent(id)}/users`, null, params),
+    cli: { group: "lists", action: "users" },
+  },
+  {
+    name: "resume_list_scrape",
+    description: "Carry on a list scrape that stopped because the data balance ran out, from where it stopped. Top up first (top_up_data_wallet).",
+    inputs: {
+      id: z.string().describe("List id of a stopped list"),
+    },
+    run: ({ id }, call) => call("POST", `/lists/${encodeURIComponent(id)}/resume`, {}),
+    cli: { group: "lists", action: "resume" },
+    destructive: true,
+  },
+];
+
 // ─── DATA WALLET ─────────────────────────────────────────────────────────────
 
 const walletTools = [
@@ -1226,6 +1287,7 @@ export function buildTools({ hosted = false } = {}) {
     ...conversationTools,
     ...listenerTools,
     ...walletTools,
+    ...listTools,
     ...dataTools,
     ...tweetTools,
   ];
