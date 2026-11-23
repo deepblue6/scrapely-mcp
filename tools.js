@@ -783,7 +783,7 @@ const conversationTools = [
 const listenerTools = [
   {
     name: "list_listeners",
-    description: "List listeners: X accounts being watched for new followers, new following, new posts, and people replying to or reposting their recent posts. Each one is sent to your webhooks as a new_follower, new_following, new_post, new_replier or new_reposter event. Shows each listener's id, handle, what it listens to, which webhooks it sends to (webhook_urls, null = all), whether it's active, last check times and last error, plus your webhook URLs (webhooks).",
+    description: "List listeners (each event they send is paid from the data balance, see get_data_wallet): X accounts being watched for new followers, new following, new posts, and people replying to or reposting their recent posts. Each one is sent to your webhooks as a new_follower, new_following, new_post, new_replier or new_reposter event. Shows each listener's id, handle, what it listens to, which webhooks it sends to (webhook_urls, null = all), whether it's active, last check times and last error, plus your webhook URLs (webhooks).",
     inputs: {},
     run: (args, call) => call("GET", "/follower-listeners"),
     cli: { group: "listeners", action: "list" },
@@ -887,6 +887,59 @@ const webhookKey = (text) =>
 
 // Shown after a command whose response carries a newly generated key.
 const generatedKeyNotice = (data) => (data && typeof data.key === "string" ? GENERATED_KEY_NOTE : null);
+
+// ─── DATA WALLET ─────────────────────────────────────────────────────────────
+
+const walletTools = [
+  {
+    name: "get_data_wallet",
+    description: "Show the data balance that pays for listener events (each new_follower, new_following, new_post, new_replier and new_reposter sent costs its price; at $0 listeners pause until a top-up), the price per event, auto-recharge settings and how many listeners are paused for balance.",
+    inputs: {},
+    run: (args, call) => call("GET", "/data-wallet"),
+    cli: { group: "wallet", action: "get" },
+  },
+  {
+    name: "top_up_data_wallet",
+    description: "Create a Stripe checkout link that adds money to the data balance once paid (minimum $5). Give the link to the user to pay; nothing is charged until they do. save_card (default true) keeps the card for auto-recharge. Paused listeners resume after the payment.",
+    inputs: {
+      amount_usd: z.number().describe("Amount to add in USD (minimum 5)"),
+      save_card: z.boolean().optional().describe("Keep the card for auto-recharge (default true)"),
+    },
+    run: ({ amount_usd, save_card }, call) => {
+      const body = { amount_usd };
+      if (save_card !== undefined) body.save_card = save_card;
+      return call("POST", "/data-wallet/topup", body);
+    },
+    cli: { group: "wallet", action: "topup", example: "--amount-usd 20" },
+  },
+  {
+    name: "update_auto_recharge",
+    description: "Turn auto-recharge on or off, or change it: when the data balance drops under threshold_usd, the card saved on a top-up is charged amount_usd (minimum 5). Turning it on needs a saved card (top up once with save_card).",
+    inputs: {
+      auto_recharge: z.boolean().optional().describe("true to turn auto-recharge on, false to turn it off"),
+      threshold_usd: z.number().optional().describe("Recharge when the balance drops under this many USD"),
+      amount_usd: z.number().optional().describe("USD to add each time (minimum 5)"),
+    },
+    run: (args, call) => {
+      const body = {};
+      for (const [k, v] of Object.entries(args)) if (v !== undefined) body[k] = v;
+      return call("PATCH", "/data-wallet", body);
+    },
+    cli: { group: "wallet", action: "auto-recharge", example: "--auto-recharge --threshold-usd 5 --amount-usd 20" },
+    destructive: true,
+  },
+  {
+    name: "get_data_usage",
+    description: "List data balance charges (one per listener event sent, with the event type and listener) and credits (top-ups, auto-recharges), newest first. Page with before_id = next_before_id.",
+    inputs: {
+      kind: z.enum(["charge", "topup", "auto_recharge", "adjustment"]).optional().describe("Only this kind of entry"),
+      limit: z.number().optional().describe("Max entries (default 50, max 500)"),
+      before_id: z.number().optional().describe("next_before_id from the previous page"),
+    },
+    run: (params, call) => call("GET", "/data-wallet/usage", null, params),
+    cli: { group: "wallet", action: "usage" },
+  },
+];
 
 const webhookTools = [
   {
@@ -1162,6 +1215,7 @@ export function buildTools({ hosted = false } = {}) {
     ...campaignTools(hosted),
     ...conversationTools,
     ...listenerTools,
+    ...walletTools,
     ...dataTools,
     ...tweetTools,
   ];
