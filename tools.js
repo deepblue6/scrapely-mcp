@@ -790,7 +790,7 @@ const listenerTools = [
   },
   {
     name: "add_listener",
-    description: "Start watching an X account (same as adding a listener in the dashboard). Max 25 listeners per workspace, one per handle. Events go to your webhooks (set in Settings), or only the ones in webhook_urls: new_follower, new_following, new_post (it posted), new_replier / new_reposter (someone replied to or reposted one of its posts from the last 3 days; checked every minute).",
+    description: "Start watching an X account (same as adding a listener in the dashboard). No limit on listeners, one per handle. Events go to your webhooks (set in Settings), or only the ones in webhook_urls: new_follower, new_following, new_post (it posted), new_replier / new_reposter (someone replied to or reposted one of its posts from the last 3 days; checked every minute).",
     inputs: {
       handle: z.string().describe("X handle to watch: 'name', '@name', or an x.com profile URL"),
       listen_followers: z.boolean().optional().describe("Send an event when this account gains a new follower (default true)"),
